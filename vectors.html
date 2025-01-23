@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orbit Simulation</title>
+    <style>
+      * {
+        background: black;
+      }
+
+      canvas {
+        display: block;
+        margin: 0 auto;
+        background: black;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="orbitCanvas"></canvas>
+    <script>
+      // Set up canvas
+      const canvas = document.getElementById("orbitCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = 600;
+      canvas.height = 600;
+
+      // Vector2d class
+      class Vector2d {
+        constructor(u, v) {
+          this.u = u;
+          this.v = v;
+        }
+
+        magnitude() {
+          return Math.sqrt(this.u ** 2 + this.v ** 2);
+        }
+
+        normalize() {
+          const mag = this.magnitude();
+          return mag === 0 ? new Vector2d(0, 0) : new Vector2d(this.u / mag, this.v / mag);
+        }
+
+        static add(v1, v2) {
+          return new Vector2d(v1.u + v2.u, v1.v + v2.v);
+        }
+
+        static subtract(v1, v2) {
+          return new Vector2d(v1.u - v2.u, v1.v - v2.v);
+        }
+
+        static scale(vector, scalar) {
+          return new Vector2d(vector.u * scalar, vector.v * scalar);
+        }
+      }
+
+      // Orbiter class
+      class Orbiter {
+        constructor(position, velocity) {
+          this.position = position; // Vector2d
+          this.velocity = velocity; // Vector2d
+        }
+
+        applyForce(force) {
+          this.velocity = Vector2d.add(this.velocity, force);
+        }
+
+        update() {
+          this.position = Vector2d.add(this.position, this.velocity);
+        }
+      }
+
+      // Simulation parameters
+      const G = 500; // Gravitational constant (scaled for visualization)
+      const centralMass = new Vector2d(canvas.width / 2, canvas.height / 2);
+      let orbiter = new Orbiter(new Vector2d(400, canvas.height / 2), new Vector2d(0, 1.5));
+
+      // Draw the central mass
+      function drawCentralMass() {
+        ctx.beginPath();
+        ctx.arc(centralMass.u, centralMass.v, 10, 0, Math.PI * 2);
+        ctx.fillStyle = "yellow";
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      // Draw the orbiter
+      function drawOrbiter() {
+        ctx.beginPath();
+        ctx.arc(orbiter.position.u, orbiter.position.v, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "white";
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      // Update the simulation
+      function update() {
+        const direction = Vector2d.subtract(centralMass, orbiter.position);
+        const distance = direction.magnitude();
+        const force = Vector2d.scale(direction.normalize(), G / (distance * distance));
+        orbiter.applyForce(force);
+        orbiter.update();
+      }
+
+      // Animate the simulation
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        drawCentralMass();
+        drawOrbiter();
+        update();
+
+        requestAnimationFrame(animate);
+      }
+
+      // Start animation
+      animate();
+    </script>
+  </body>
+</html>
