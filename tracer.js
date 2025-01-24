@@ -3,8 +3,8 @@ import fs from "fs";
 
 import { Vector3d } from "./vectors.js";
 // Set up canvas dimensions
-const canvasWidth = 800;
-const canvasHeight = 400;
+const canvasWidth = 512;
+const canvasHeight = 512;
 const canvas = createCanvas(canvasWidth, canvasHeight);
 const ctx = canvas.getContext("2d");
 
@@ -30,7 +30,7 @@ const c = 299792458; //Speed of Light m/s
 // Example usage
 const mass = 1.989e30; // Mass of the Sun in kilograms
 
-let bh = new BlackHole(new Vector3d(0, -100, 0), mass);
+let bh = new BlackHole(new Vector3d(0, -50, 0), mass);
 
 console.log(`The Schwarzschild radius is ${bh.rs} meters.`);
 
@@ -50,6 +50,10 @@ class Ray {
   warp(warpFunction) {
     this.direction = warpFunction(this);
     this.direction.normalize();
+  }
+
+  step(stepSize) {
+    this.origin = Vector3d.add(this.origin, Vector3d.scale(this.direction, stepSize));
   }
 }
 
@@ -88,20 +92,8 @@ class Camera {
   }
 }
 
-function rayIntersectsSphere(ray, sphere) {
-  const oc = Vector3d.subtract(ray.origin, sphere.position); // Vector from ray origin to sphere center
-  const a = Vector3d.dot(ray.direction, ray.direction);
-  const b = 2.0 * Vector3d.dot(oc, ray.direction);
-  const c = Vector3d.dot(oc, oc) - sphere.rs ** 2;
-  const discriminant = b ** 2 - 4 * a * c;
-
-  if (discriminant < 0) {
-    return null; // No intersection
-  } else {
-    const t1 = (-b - Math.sqrt(discriminant)) / (2.0 * a);
-    const t2 = (-b + Math.sqrt(discriminant)) / (2.0 * a);
-    return Math.min(t1, t2); // Return the closest intersection point
-  }
+function distanceToBlackHole(ray, bh) {
+  return Vector3d.distance(ray.origin, bh.position);
 }
 
 let origin = new Vector3d(0, 0, 0);
@@ -129,7 +121,7 @@ function background(ray) {
 
   // Random chance for a star
   const starChance = Math.random();
-  if (starChance > 0.99) {
+  if (starChance > 0) {
     // Random brightness and color
     const brightness = Math.random() * 255;
     const colors = [
@@ -149,18 +141,57 @@ function background(ray) {
   return { r: 0, g: 0, b: 0 };
 }
 
+let absorbedCount = 0;
+let totalCount = 0;
+
+console.log(`Scaled Schwarzschild Radius: ${bh.rs}`);
+
 for (let y = 0; y < canvasHeight; y++) {
   for (let x = 0; x < canvasWidth; x++) {
     const ray = cam.generateRay(x, y, canvasWidth, canvasHeight);
 
-    // Check for intersection with the black hole
-    const t = rayIntersectsSphere(ray, bh);
+    if (x % 100 === 0 && y % 100 === 0) {
+      console.log(`Ray Direction: ${ray.direction.print()}, Origin: ${ray.origin.print()}`);
+    }
 
-    if (t !== null) {
-      // The ray hits the black hole
-      ctx.fillStyle = "black";
+    totalCount++;
+    let isAbsorbed = false;
+
+    for (let i = 0; i < 200; i++) {
+      const b = distanceToBlackHole(ray, bh);
+
+      // Cap distance to avoid division by zero or extreme values
+      const safeB = Math.max(b, 1e-3);
+
+      // Calculate deflection angle and cap it
+      const alpha = (4 * G * bh.mass) / (c ** 2 * safeB);
+      const incrementalAlpha = alpha / 10000;
+
+      // Check for absorption
+      if (b < bh.rs) {
+        // console.log(`Ray absorbed at distance: ${b}, Schwarzschild radius: ${bh.rs}`);
+        isAbsorbed = true;
+        absorbedCount++;
+        break;
+      }
+
+      // Calculate bending adjustment
+      const vectorToBH = Vector3d.subtract(bh.position, ray.origin);
+      const normalizedVectorToBH = Vector3d.normalize(vectorToBH);
+      const bendingAdjustment = Vector3d.scale(normalizedVectorToBH, incrementalAlpha * (bh.rs / 10));
+
+      // Apply bending adjustment and normalize
+      ray.direction = Vector3d.add(ray.direction, bendingAdjustment);
+      ray.direction.normalize();
+
+      // Step forward
+      ray.step(0.5); // Smaller step size for precision
+    }
+
+    // Render the pixel
+    if (isAbsorbed) {
+      ctx.fillStyle = "black"; // Black for absorbed rays
     } else {
-      // Render the background
       const color = background(ray);
       ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
     }
@@ -168,6 +199,8 @@ for (let y = 0; y < canvasHeight; y++) {
     ctx.fillRect(x, y, 1, 1);
   }
 }
+
+console.log(absorbedCount, totalCount);
 
 // Save the canvas as an image file
 const out = fs.createWriteStream("output.png");
