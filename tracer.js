@@ -3,10 +3,38 @@ import fs from "fs";
 
 import { Vector3d } from "./vectors.js";
 // Set up canvas dimensions
-const canvasWidth = 512;
-const canvasHeight = 256;
+const canvasWidth = 800;
+const canvasHeight = 400;
 const canvas = createCanvas(canvasWidth, canvasHeight);
 const ctx = canvas.getContext("2d");
+
+class BlackHole {
+  constructor(position, mass) {
+    this.position = position;
+    this.mass = mass;
+
+    this.scaleFactor = 1e-2;
+
+    this.rs = this.schwarzschildRadius(mass);
+    this.rs = this.rs * this.scaleFactor;
+  }
+
+  schwarzschildRadius(mass) {
+    return (2 * G * mass) / c ** 2;
+  }
+}
+
+const G = 6.6743e-11; //Gravitational constant m^3 kg^-1 s^-2
+const c = 299792458; //Speed of Light m/s
+
+// Example usage
+const mass = 1.989e30; // Mass of the Sun in kilograms
+
+let bh = new BlackHole(new Vector3d(0, -100, 0), mass);
+
+console.log(`The Schwarzschild radius is ${bh.rs} meters.`);
+
+console.log(`The scaled Schwarzschild radius is ${bh.rs} units `);
 
 class Ray {
   constructor(origin, direction) {
@@ -60,8 +88,24 @@ class Camera {
   }
 }
 
+function rayIntersectsSphere(ray, sphere) {
+  const oc = Vector3d.subtract(ray.origin, sphere.position); // Vector from ray origin to sphere center
+  const a = Vector3d.dot(ray.direction, ray.direction);
+  const b = 2.0 * Vector3d.dot(oc, ray.direction);
+  const c = Vector3d.dot(oc, oc) - sphere.rs ** 2;
+  const discriminant = b ** 2 - 4 * a * c;
+
+  if (discriminant < 0) {
+    return null; // No intersection
+  } else {
+    const t1 = (-b - Math.sqrt(discriminant)) / (2.0 * a);
+    const t2 = (-b + Math.sqrt(discriminant)) / (2.0 * a);
+    return Math.min(t1, t2); // Return the closest intersection point
+  }
+}
+
 let origin = new Vector3d(0, 0, 0);
-let direction = new Vector3d(0, 10, 0);
+let direction = new Vector3d(0, -100, 0);
 
 // let ray = new Ray(origin, direction);
 
@@ -84,20 +128,30 @@ function background(ray) {
   };
 }
 
-// Render to the canvas
-// Render to the canvas
 for (let y = 0; y < canvasHeight; y++) {
-  // Loop over rows (height)
   for (let x = 0; x < canvasWidth; x++) {
-    // Loop over columns (width)
-    const ray = cam.generateRay(x, y, canvasWidth, canvasHeight); // Correct order: x, y
+    const ray = cam.generateRay(x, y, canvasWidth, canvasHeight);
 
-    const color = background(ray);
+    // Check for intersection with the black hole
+    const t = rayIntersectsSphere(ray, bh);
 
-    ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
-    ctx.fillRect(x, y, 1, 1); // Correct order: x, y
+    if (t !== null) {
+      // The ray hits the black hole
+      ctx.fillStyle = "black";
+    } else {
+      // Render the background
+      const color = background(ray);
+      ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
+    }
+
+    ctx.fillRect(x, y, 1, 1);
   }
 }
+
+// ctx.beginPath();
+// ctx.arc(canvasWidth / 2, canvasHeight / 2, scaledRs, 0, 2 * Math.PI);
+// ctx.fillStyle = "black";
+// ctx.fill();
 
 // Save the canvas as an image file
 const out = fs.createWriteStream("output.png");

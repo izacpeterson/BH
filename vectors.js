@@ -70,7 +70,8 @@ export class Vector3d {
   normalize() {
     const mag = this.magnitude();
     if (mag === 0) {
-      throw new Error("Cannot normalize a vector with magnitude 0");
+      // throw new Error("Cannot normalize a vector with magnitude 0");
+      return;
     }
     this.u /= mag;
     this.v /= mag;
