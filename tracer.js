@@ -115,17 +115,38 @@ let cam = new Camera(origin, direction, new Vector3d(0, 0, 90), 90, canvasWidth 
 
 console.log(cam.right);
 
-function background(ray) {
-  const t = 0.5 * (ray.direction.w + 1); // Map y from [-1, 1] to [0, 1]
-  const startColor = { r: 255, g: 255, b: 255 }; // White
-  const endColor = { r: 135, g: 206, b: 235 }; // Sky blue
+function hash(x, y, z) {
+  return Math.abs((Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453) % 1);
+}
 
-  // Linear interpolation between startColor and endColor
-  return {
-    r: (1 - t) * startColor.r + t * endColor.r,
-    g: (1 - t) * startColor.g + t * endColor.g,
-    b: (1 - t) * startColor.b + t * endColor.b,
-  };
+function background(ray) {
+  const x = ray.direction.u;
+  const y = ray.direction.v;
+  const z = ray.direction.w;
+
+  // Generate a hash-based seed for this ray direction
+  const seed = hash(x, y, z);
+
+  // Random chance for a star
+  const starChance = Math.random();
+  if (starChance > 0.99) {
+    // Random brightness and color
+    const brightness = Math.random() * 255;
+    const colors = [
+      { r: brightness, g: brightness, b: brightness }, // White
+      { r: brightness, g: brightness * 0.9, b: brightness * 0.7 }, // Yellowish
+      { r: brightness * 0.7, g: brightness * 0.8, b: brightness }, // Bluish
+    ];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    return {
+      r: color.r,
+      g: color.g,
+      b: color.b,
+    };
+  }
+
+  // Empty space (black background)
+  return { r: 0, g: 0, b: 0 };
 }
 
 for (let y = 0; y < canvasHeight; y++) {
@@ -147,11 +168,6 @@ for (let y = 0; y < canvasHeight; y++) {
     ctx.fillRect(x, y, 1, 1);
   }
 }
-
-// ctx.beginPath();
-// ctx.arc(canvasWidth / 2, canvasHeight / 2, scaledRs, 0, 2 * Math.PI);
-// ctx.fillStyle = "black";
-// ctx.fill();
 
 // Save the canvas as an image file
 const out = fs.createWriteStream("output.png");
