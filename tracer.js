@@ -182,7 +182,7 @@ let bh = new BlackHole(new Vector3d(0, 0, 0), mass); // Changed from (0, -1000, 
 console.log(`The Schwarzschild radius is ${bh.rs} meters.`);
 
 // Camera setup
-let origin = new Vector3d(0, 50000, 100000);
+let origin = new Vector3d(0, 50000, 0);
 let direction = new Vector3d(0, 0, 0); // Look towards the black hole
 
 const fov = 90;

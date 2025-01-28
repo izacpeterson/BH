@@ -3,114 +3,140 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-  </head>
-  <body>
-    <canvas id="blackholeCanvas" width="800" height="600"></canvas>
-    <script>
-      const canvas = document.getElementById("blackholeCanvas");
-      const gl = canvas.getContext("webgl");
-
-      // Compile shaders
-      function compileShader(gl, source, type) {
-        const shader = gl.createShader(type);
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-          console.error(gl.getShaderInfoLog(shader));
-          gl.deleteShader(shader);
-          return null;
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@<version>/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@<version>/examples/jsm/"
         }
-        return shader;
       }
-
-      // Link shaders into a program
-      function createProgram(gl, vertexShaderSource, fragmentShaderSource) {
-        const program = gl.createProgram();
-        const vShader = compileShader(gl, vertexShaderSource, gl.VERTEX_SHADER);
-        const fShader = compileShader(gl, fragmentShaderSource, gl.FRAGMENT_SHADER);
-        gl.attachShader(program, vShader);
-        gl.attachShader(program, fShader);
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-          console.error(gl.getProgramInfoLog(program));
-          return null;
-        }
-        return program;
-      }
-
-      // Vertex and fragment shaders
-      const vertexShaderSource = `attribute vec2 a_position;
-varying vec2 v_uv;
-
-void main() {
-    v_uv = a_position * 0.5 + 0.5; // Map [-1,1] to [0,1]
-    gl_Position = vec4(a_position, 0.0, 1.0);
-}
-`; // Use the vertex shader code here
-      const fragmentShaderSource = `precision highp float;
-
-varying vec2 v_uv;
-
-uniform vec2 resolution; // Canvas resolution
-uniform float schwarzschildRadius; // Schwarzschild radius
-uniform vec3 cameraPosition; // Camera coordinates
-uniform float time; // For animations
-
-void main() {
-    // Normalize pixel coordinates to [-1, 1]
-    vec2 uv = (v_uv * resolution - resolution * 0.5) / resolution.y;
-
-    // Ray origin and direction
-    vec3 rayOrigin = cameraPosition;
-    vec3 rayDirection = normalize(vec3(uv, -1.0)); // Forward direction
-
-    // Schwarzschild black hole effect
-    float r = length(rayOrigin.xy); // Distance to the black hole
-    float gravity = schwarzschildRadius / r; // Basic gravity approximation
-
-    // Distort based on gravity
-    vec2 distortedUV = uv * (1.0 - gravity);
-
-    // Set color (simulate gravitational redshift)
-    float intensity = 1.0 / (1.0 + gravity);
-    vec3 color = vec3(intensity, intensity * 0.8, intensity * 0.6);
-
-    gl_FragColor = vec4(color, 1.0);
-}
-`; // Use the fragment shader code here
-
-      const program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
-      gl.useProgram(program);
-
-      // Pass data to shaders
-      const positionBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-
-      // Set up attributes
-      const positionLocation = gl.getAttribLocation(program, "a_position");
-      gl.enableVertexAttribArray(positionLocation);
-      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-      // Set uniforms
-      const resolutionLocation = gl.getUniformLocation(program, "resolution");
-      const schwarzschildRadiusLocation = gl.getUniformLocation(program, "schwarzschildRadius");
-      const cameraPositionLocation = gl.getUniformLocation(program, "cameraPosition");
-      const timeLocation = gl.getUniformLocation(program, "time");
-
-      gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
-      gl.uniform1f(schwarzschildRadiusLocation, 1.0); // Example radius
-      gl.uniform3f(cameraPositionLocation, 0.0, 0.0, 5.0);
-
-      // Animation loop
-      function render(time) {
-        gl.uniform1f(timeLocation, time * 0.001); // Pass time to shader
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        requestAnimationFrame(render);
-      }
-
-      render();
     </script>
-  </body>
+
+    <title>Black Hole Ray Tracing</title>
+    <script type="module">
+      import * as THREE from "https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js";
+      import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@latest/examples/jsm/controls/OrbitControls.js";
+
+      const G = 6.6743e-11; // Gravitational constant m^3 kg^-1 s^-2
+      const c = 299792458; // Speed of Light m/s
+
+      class BlackHole {
+        constructor(position, mass) {
+          this.position = position; // THREE.Vector3
+          this.mass = mass;
+          this.rs = this.schwarzschildRadius(mass);
+        }
+
+        schwarzschildRadius(mass) {
+          return (2 * G * mass) / c ** 2;
+        }
+      }
+
+      class Ray {
+        constructor(origin, direction) {
+          this.origin = origin.clone(); // THREE.Vector3
+          this.direction = direction.clone().normalize();
+        }
+
+        step(stepSize) {
+          this.origin.add(this.direction.clone().multiplyScalar(stepSize));
+        }
+      }
+
+      function calculateImpactParameter(ray, blackHole) {
+        const r0 = ray.origin.clone().sub(blackHole.position); // Vector from ray origin to black hole
+        const cross = new THREE.Vector3().crossVectors(r0, ray.direction); // Cross product
+        return cross.length() / ray.direction.length(); // Normalize by direction magnitude
+      }
+
+      function rungeKuttaDirectionUpdate(ray, blackHole, dt) {
+        const gravityFunc = (position, direction) => {
+          const toBlackHole = blackHole.position.clone().sub(position);
+          const distance = toBlackHole.length();
+          const deflectionMagnitude = (4 * G * blackHole.mass) / (c ** 2 * distance ** 2);
+          return toBlackHole.normalize().multiplyScalar(deflectionMagnitude);
+        };
+
+        const position = ray.origin.clone();
+        const direction = ray.direction.clone();
+
+        const k1 = gravityFunc(position, direction);
+        const k2 = gravityFunc(position.clone().add(direction.clone().multiplyScalar(dt / 2)), direction.clone().add(k1.clone().multiplyScalar(dt / 2)));
+        const k3 = gravityFunc(position.clone().add(direction.clone().multiplyScalar(dt / 2)), direction.clone().add(k2.clone().multiplyScalar(dt / 2)));
+        const k4 = gravityFunc(position.clone().add(direction.clone().multiplyScalar(dt)), direction.clone().add(k3.clone().multiplyScalar(dt)));
+
+        const newDirection = direction.add(
+          k1
+            .clone()
+            .add(k2.clone().multiplyScalar(2))
+            .add(k3.clone().multiplyScalar(2))
+            .add(k4)
+            .multiplyScalar(dt / 6)
+        );
+        return newDirection.normalize();
+      }
+
+      // Initialize Three.js Scene
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      camera.position.set(0, 100, 200);
+      controls.update();
+
+      // Black Hole Setup
+      const blackHoleMass = 1.989e30; // Mass of the Sun
+      const blackHolePosition = new THREE.Vector3(0, 0, 0);
+      const blackHole = new BlackHole(blackHolePosition, blackHoleMass);
+
+      const blackHoleGeometry = new THREE.SphereGeometry(blackHole.rs, 32, 32);
+      const blackHoleMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const blackHoleMesh = new THREE.Mesh(blackHoleGeometry, blackHoleMaterial);
+      scene.add(blackHoleMesh);
+
+      // Ray Tracing
+      const rays = [];
+      const stepSize = 10;
+      const numRays = 1000;
+
+      for (let i = 0; i < numRays; i++) {
+        const origin = new THREE.Vector3((Math.random() - 0.5) * 500, (Math.random() - 0.5) * 500, 100);
+        const direction = new THREE.Vector3(-origin.x, -origin.y, -origin.z).normalize();
+
+        rays.push(new Ray(origin, direction));
+      }
+
+      // Rendering Rays
+      const rayMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+      rays.forEach((ray) => {
+        const points = [];
+        for (let j = 0; j < 500; j++) {
+          points.push(ray.origin.clone());
+          ray.direction = rungeKuttaDirectionUpdate(ray, blackHole, stepSize);
+          ray.step(stepSize);
+        }
+        const rayGeometry = new THREE.BufferGeometry().setFromPoints(points);
+        const rayLine = new THREE.Line(rayGeometry, rayMaterial);
+        scene.add(rayLine);
+      });
+
+      // Animation Loop
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+    </script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body></body>
 </html>
