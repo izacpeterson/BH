@@ -4,8 +4,8 @@ import fs from "fs";
 import { Vector3d } from "./vectors.js";
 
 // Set up canvas dimensions
-const canvasWidth = 1024;
-const canvasHeight = 1024;
+const canvasWidth = 1920;
+const canvasHeight = 1080;
 const canvas = createCanvas(canvasWidth, canvasHeight);
 const ctx = canvas.getContext("2d");
 
@@ -101,7 +101,7 @@ function background(ray) {
   const v = 0.5 - Math.asin(rotatedY) / Math.PI; // Latitude
 
   // Scale UV to grid coordinates
-  const gridSize = 250; // Number of grid cells
+  const gridSize = 101; // Number of grid cells
   const gridX = Math.floor(u * gridSize);
   const gridY = Math.floor(v * gridSize);
 
@@ -127,30 +127,59 @@ function calculateDeflectionAngle(b, blackHole) {
 }
 
 function lensingWarp(ray, blackHole, b) {
-  const deflectionAngle = calculateDeflectionAngle(b, blackHole);
-
-  // Vector pointing toward the black hole
+  // Calculate the vector pointing toward the black hole
   const toBlackHole = Vector3d.subtract(blackHole.position, ray.origin);
   const normalizedToBlackHole = Vector3d.normalize(toBlackHole);
 
-  // Gradually adjust the ray's direction toward the black hole
-  const scaledDeflection = Vector3d.scale(normalizedToBlackHole, deflectionAngle * 0.001); // Apply a small fraction
-  return Vector3d.add(ray.direction, scaledDeflection);
+  // Calculate deflection angle and scale the effect
+  const deflectionAngle = calculateDeflectionAngle(b, blackHole);
+  const scaledDeflection = Vector3d.scale(normalizedToBlackHole, deflectionAngle * 0.001);
+
+  // Adjust the ray's direction vector and normalize it
+  const newDirection = Vector3d.add(ray.direction, scaledDeflection);
+  return Vector3d.normalize(newDirection);
+}
+
+function rungeKuttaDirectionUpdate(ray, blackHole, dt) {
+  const gravityFunc = (position, direction) => {
+    const toBlackHole = Vector3d.subtract(blackHole.position, position);
+    const normalizedToBlackHole = Vector3d.normalize(toBlackHole);
+
+    // Deflection proportional to Schwarzschild radius and inverse of squared distance
+    const distance = Vector3d.magnitude(toBlackHole);
+    const deflectionMagnitude = (4 * G * blackHole.mass) / (c ** 2 * distance ** 2);
+
+    return Vector3d.scale(normalizedToBlackHole, deflectionMagnitude);
+  };
+
+  const position = ray.origin;
+  const direction = ray.direction;
+
+  // Runge-Kutta steps
+  const k1 = gravityFunc(position, direction);
+  const k2 = gravityFunc(Vector3d.add(position, Vector3d.scale(direction, dt / 2)), Vector3d.add(direction, Vector3d.scale(k1, dt / 2)));
+  const k3 = gravityFunc(Vector3d.add(position, Vector3d.scale(direction, dt / 2)), Vector3d.add(direction, Vector3d.scale(k2, dt / 2)));
+  const k4 = gravityFunc(Vector3d.add(position, Vector3d.scale(direction, dt)), Vector3d.add(direction, Vector3d.scale(k3, dt)));
+
+  // Update the direction
+  const newDirection = Vector3d.add(direction, Vector3d.scale(Vector3d.add(Vector3d.add(k1, Vector3d.scale(k2, 2)), Vector3d.add(Vector3d.scale(k3, 2), k4)), dt / 6));
+
+  return Vector3d.normalize(newDirection);
 }
 
 // Example usage
 const mass = 1.989e30; // Mass of the Sun in kilograms
 
 // Adjusted black hole position without scaling
-let bh = new BlackHole(new Vector3d(0, -100000, 0), mass); // Changed from (0, -1000, 0) to (0, -100000, 0)
+let bh = new BlackHole(new Vector3d(0, 0, 0), mass); // Changed from (0, -1000, 0) to (0, -100000, 0)
 
 console.log(`The Schwarzschild radius is ${bh.rs} meters.`);
 
 // Camera setup
-let origin = new Vector3d(0, 0, 0);
-let direction = new Vector3d(0, -100000, 0); // Look towards the black hole
+let origin = new Vector3d(0, -100000, 2000);
+let direction = new Vector3d(0, 0, 0); // Look towards the black hole
 
-const fov = 90;
+const fov = 45;
 const fovInRadians = (fov * Math.PI) / 180;
 
 // Adjusted camera 'up' vector for better visualization
@@ -171,10 +200,14 @@ const cameraDistanceToBH = Vector3d.distance(cam.position, bh.position);
 console.log(`Camera Distance to Black Hole: ${cameraDistanceToBH} meters`);
 
 // Adjusted step size and iterations based on new distances
-let stepSize = 100; // Increased step size to cover larger distances
+let stepSize = 1000; // Increased step size to cover larger distances
 let iterations = Math.ceil(cameraDistanceToBH / stepSize) * 2; // Ensure sufficient iterations
 
-// Ray tracing loop with adjusted step size and iterations
+// Ray tracing loop with adjusted step size and iterations// Ray tracing loop with dynamic step sizing
+// Ray tracing loop with dynamic step sizing and minimum step size
+const minStepSize = 1000; // Minimum step size in meters (adjust as needed)
+
+// Ray tracing loop with dynamic step sizing and 'red cross' rendering
 for (let y = 0; y < canvasHeight; y++) {
   for (let x = 0; x < canvasWidth; x++) {
     const ray = cam.generateRay(x, y, canvasWidth, canvasHeight);
@@ -183,16 +216,23 @@ for (let y = 0; y < canvasHeight; y++) {
 
     totalCount++;
     let isAbsorbed = false;
-    let testPixel = false;
+    let crossedZero = false;
 
-    // Calculate dynamic max iterations
-    for (let i = 0; i < iterations; i++) {
+    // Dynamically trace the ray
+    let steps = 0; // Track steps to prevent infinite loops
+    let finDistance = 0;
+    while (true) {
       const distance = distanceToBlackHole(ray, bh);
+      finDistance = distance;
+      // Check if the ray crosses the "up" axis (w component crosses 0)
+      const prevW = ray.origin.w;
+      ray.step(stepSize); // Move the ray forward
+      const currentW = ray.origin.w;
 
-      if (x === 200 && y === Math.floor(canvasWidth / 2)) {
-        // Debugging specific pixel
-        console.log(distance, bh.rs);
-        testPixel = true;
+      if (prevW * currentW < 0 && distance < 75000 && distance > 10000) {
+        // Detect crossing zero
+        crossedZero = true;
+        break;
       }
 
       // Check for absorption
@@ -202,20 +242,39 @@ for (let y = 0; y < canvasHeight; y++) {
         break;
       }
 
-      ray.warp((ray) => lensingWarp(ray, bh, b));
+      // Check for escape condition
+      const escapeDistance = bh.rs * 50; // Arbitrary escape threshold
+      if (distance > escapeDistance) {
+        break;
+      }
 
-      // Step the ray forward
-      ray.step(stepSize);
+      // Update ray direction using Runge-Kutta
+      ray.direction = rungeKuttaDirectionUpdate(ray, bh, stepSize);
+
+      // Increment step counter and exit if too many steps
+      steps++;
+      if (steps > 10000) {
+        console.warn("Ray exceeded maximum step count, terminating.");
+        break;
+      }
     }
 
     // Render the pixel
     if (isAbsorbed) {
       ctx.fillStyle = "black"; // Black for absorbed rays
-    } else if (testPixel) {
-      ctx.fillStyle = "red";
+    } else if (crossedZero) {
+      // ctx.fillStyle = "red"; // Red for rays crossing the up axis
+
+      function normalize(value, minInput, maxInput, minOutput, maxOutput) {
+        return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
+      }
+
+      let scaledDistance = normalize(finDistance, 75000, 10000, 0, 255);
+      ctx.fillStyle = `rgb(${scaledDistance}, 0, 0)`;
     } else {
       const color = background(ray);
-      ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
+      // ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
+      ctx.fillStyle = "black"; // Black for absorbed rays
     }
 
     ctx.fillRect(x, y, 1, 1);

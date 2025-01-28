@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Black Hole Ray Tracing with WebGL</title>
+  </head>
+  <body>
+    <canvas id="webglCanvas" width="1920" height="1080"></canvas>
+    <script>
+      const canvas = document.getElementById("webglCanvas");
+      const gl = canvas.getContext("webgl");
+
+      if (!gl) {
+        alert("WebGL not supported!");
+      }
+
+      // Vertex Shader
+      const vertexShaderSource = `
+      attribute vec2 aPosition;
+      varying vec2 vUV;
+      void main() {
+        vUV = (aPosition + 1.0) / 2.0; // Map to [0, 1]
+        gl_Position = vec4(aPosition, 0.0, 1.0);
+      }
+    `;
+
+      // Fragment Shader
+      const fragmentShaderSource = `
+      precision highp float;
+
+      uniform vec3 uBlackHolePosition;
+      uniform float uBlackHoleMass;
+      uniform vec3 uCameraPosition;
+      uniform vec3 uCameraForward;
+      uniform vec3 uCameraRight;
+      uniform vec3 uCameraUp;
+      uniform float uFov;
+      uniform float uAspectRatio;
+
+      varying vec2 vUV;
+
+      const float G = 6.6743e-11;
+      const float c = 299792458.0;
+
+      // Calculate Schwarzschild radius
+      float schwarzschildRadius(float mass) {
+        return (2.0 * G * mass) / (c * c);
+      }
+
+      // Ray direction based on pixel coordinates
+      vec3 generateRayDirection(vec2 uv, vec3 forward, vec3 right, vec3 up, float fov, float aspect) {
+        float viewportHeight = 2.0 * tan(fov / 2.0);
+        float viewportWidth = viewportHeight * aspect;
+
+        vec3 horizontal = right * ((uv.x - 0.5) * viewportWidth);
+        vec3 vertical = up * ((0.5 - uv.y) * viewportHeight);
+        return normalize(forward + horizontal + vertical);
+      }
+
+      // Deflection angle based on impact parameter
+      float calculateDeflectionAngle(float b, float mass) {
+        return (4.0 * G * mass) / (c * c * b);
+      }
+
+      // Distance to black hole
+      float distanceToBlackHole(vec3 rayOrigin, vec3 bhPosition) {
+        return length(rayOrigin - bhPosition);
+      }
+
+      // Ray tracing function
+      vec3 traceRay(vec3 rayOrigin, vec3 rayDirection, vec3 bhPosition, float bhMass) {
+        float rs = schwarzschildRadius(bhMass);
+
+        for (int i = 0; i < 1000; i++) {
+          float distance = distanceToBlackHole(rayOrigin, bhPosition);
+          if (distance < rs) {
+            return vec3(0.0, 0.0, 0.0); // Absorbed (black)
+          }
+
+          if (distance > rs * 50.0) {
+            break; // Escape condition
+          }
+
+          // Update direction (simplified)
+          vec3 toBH = normalize(bhPosition - rayOrigin);
+          float deflection = calculateDeflectionAngle(distance, bhMass);
+          rayDirection += toBH * deflection * 0.001;
+
+          // Move the ray forward
+          rayOrigin += rayDirection * 1000.0; // Step size
+        }
+
+        // Background (checkerboard pattern)
+        float gridSize = 10.0;
+        vec2 grid = floor(rayOrigin.xz / gridSize);
+        bool isBlack = mod(grid.x + grid.y, 2.0) < 1.0;
+        return isBlack ? vec3(0.0) : vec3(1.0);
+      }
+
+      void main() {
+        vec3 rayDirection = generateRayDirection(vUV, uCameraForward, uCameraRight, uCameraUp, uFov, uAspectRatio);
+        vec3 color = traceRay(uCameraPosition, rayDirection, uBlackHolePosition, uBlackHoleMass);
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+
+      // Compile shaders
+      function compileShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error(gl.getShaderInfoLog(shader));
+          gl.deleteShader(shader);
+          return null; // This return is correct
+        }
+
+        return shader; // This return is also correct
+      }
+
+      const vertexShader = compileShader(gl.VERTEX_SHADER, vertexShaderSource);
+      const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+      function createAndLinkProgram(gl, vertexShader, fragmentShader) {
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          console.error(gl.getProgramInfoLog(program));
+          return null; // Valid return inside a function
+        }
+
+        return program;
+      }
+
+      // Call the function
+      const program = createAndLinkProgram(gl, vertexShader, fragmentShader);
+      if (!program) {
+        console.error("Failed to create and link program.");
+      }
+
+      gl.useProgram(program);
+
+      // Set up geometry
+      const quadVertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+
+      const positionBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
+
+      const aPosition = gl.getAttribLocation(program, "aPosition");
+      gl.enableVertexAttribArray(aPosition);
+      gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
+
+      // Set uniform values
+      const uBlackHolePosition = gl.getUniformLocation(program, "uBlackHolePosition");
+      const uBlackHoleMass = gl.getUniformLocation(program, "uBlackHoleMass");
+      const uCameraPosition = gl.getUniformLocation(program, "uCameraPosition");
+      const uCameraForward = gl.getUniformLocation(program, "uCameraForward");
+      const uCameraRight = gl.getUniformLocation(program, "uCameraRight");
+      const uCameraUp = gl.getUniformLocation(program, "uCameraUp");
+      const uFov = gl.getUniformLocation(program, "uFov");
+      const uAspectRatio = gl.getUniformLocation(program, "uAspectRatio");
+
+      gl.uniform3fv(uBlackHolePosition, [0.0, 0.0, 0.0]);
+      gl.uniform1f(uBlackHoleMass, 1.989e30);
+      gl.uniform3fv(uCameraPosition, [0.0, -100000.0, 0.0]);
+      gl.uniform3fv(uCameraForward, [0.0, 1.0, 0.0]);
+      gl.uniform3fv(uCameraRight, [1.0, 0.0, 0.0]);
+      gl.uniform3fv(uCameraUp, [0.0, 0.0, 1.0]);
+      gl.uniform1f(uFov, Math.PI / 2);
+      gl.uniform1f(uAspectRatio, canvas.width / canvas.height);
+
+      // Render
+      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    </script>
+  </body>
+</html>
