@@ -1,4 +1,4 @@
-import { createCanvas } from "canvas";
+import { createCanvas, loadImage } from "canvas";
 import fs from "fs";
 
 import { Vector3d } from "./vectors.js";
@@ -182,10 +182,10 @@ let bh = new BlackHole(new Vector3d(0, 0, 0), mass); // Changed from (0, -1000, 
 console.log(`The Schwarzschild radius is ${bh.rs} meters.`);
 
 // Camera setup
-let origin = new Vector3d(0, -100000, 10000);
+let origin = new Vector3d(0, 50000, 100000);
 let direction = new Vector3d(0, 0, 0); // Look towards the black hole
 
-const fov = 45;
+const fov = 90;
 const fovInRadians = (fov * Math.PI) / 180;
 
 // Adjusted camera 'up' vector for better visualization
@@ -214,7 +214,7 @@ let iterations = Math.ceil(cameraDistanceToBH / stepSize) * 2; // Ensure suffici
 const minStepSize = 1000; // Minimum step size in meters (adjust as needed)
 
 let particles = [];
-for (let i = 0; i < 1000; i++) {
+for (let i = 0; i < 10000; i++) {
   let u = Math.random() * 100000 - 50000;
   let v = Math.random() * 100000 - 50000;
   let w = Math.random() * 2500 - 2500 / 2;
@@ -259,23 +259,23 @@ for (let y = 0; y < canvasHeight; y++) {
       ray.step(stepSize); // Move the ray forward
       const currentW = ray.origin.w;
 
-      particles.forEach((part) => {
-        // console.log(part);
+      // particles.forEach((part) => {
+      //   // console.log(part);
 
-        let distance = Vector3d.distance(part.position, ray.origin);
-        // console.log(distance);
+      //   let distance = Vector3d.distance(part.position, ray.origin);
+      //   // console.log(distance);
 
-        if (distance < 500) {
-          hitParticle = true;
-          return;
-        }
-      });
+      //   if (distance < 100) {
+      //     hitParticle = true;
+      //     return;
+      //   }
+      // });
 
-      // if (prevW * currentW < 0 && distance < 75000 && distance > 10000) {
-      //   // Detect crossing zero
-      //   crossedZero = true;
-      //   break;
-      // }
+      if (prevW * currentW < 0 && distance < 75000 && distance > 10000) {
+        // Detect crossing zero
+        crossedZero = true;
+        break;
+      }
 
       // Check for absorption
       if (distance < bh.rs) {
@@ -314,18 +314,18 @@ for (let y = 0; y < canvasHeight; y++) {
       let scaledDistance = normalize(finDistance, 50000, 0, 0, 255);
       ctx.fillStyle = `rgb(${scaledDistance}, ${scaledDistance}, ${scaledDistance})`;
     } else if (crossedZero) {
-      // ctx.fillStyle = "red"; // Red for rays crossing the up axis
+      ctx.fillStyle = "red"; // Red for rays crossing the up axis
 
       function normalize(value, minInput, maxInput, minOutput, maxOutput) {
         return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
       }
 
-      let scaledDistance = normalize(finDistance, 10000, 3000, 0, 255);
+      let scaledDistance = normalize(finDistance, 70000, 3000, 0, 255);
       ctx.fillStyle = `rgb(${scaledDistance}, 0, 0)`;
     } else {
       const color = background(ray);
-      // ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
-      ctx.fillStyle = "black"; // Black for absorbed rays
+      ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
+      ctx.fillStyle = "black";
     }
 
     ctx.fillRect(x, y, 1, 1);

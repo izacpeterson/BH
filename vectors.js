@@ -67,6 +67,19 @@ export class Vector3d {
     return `${this.u}, ${this.v}, ${this.w}`;
   }
 
+  // Flatten the vector into an array [u, v, w]
+  flatten() {
+    return [this.u, this.v, this.w];
+  }
+
+  // Create a Vector3d object from an array [u, v, w]
+  static fromArray(array) {
+    if (array.length !== 3) {
+      throw new Error("Array must have exactly 3 elements to create a Vector3d.");
+    }
+    return new Vector3d(array[0], array[1], array[2]);
+  }
+
   normalize() {
     const mag = this.magnitude();
     if (mag === 0) {

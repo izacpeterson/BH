@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <canvas id="blackholeCanvas" width="800" height="600"></canvas>
+    <script>
+      const canvas = document.getElementById("blackholeCanvas");
+      const gl = canvas.getContext("webgl");
+
+      // Compile shaders
+      function compileShader(gl, source, type) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error(gl.getShaderInfoLog(shader));
+          gl.deleteShader(shader);
+          return null;
+        }
+        return shader;
+      }
+
+      // Link shaders into a program
+      function createProgram(gl, vertexShaderSource, fragmentShaderSource) {
+        const program = gl.createProgram();
+        const vShader = compileShader(gl, vertexShaderSource, gl.VERTEX_SHADER);
+        const fShader = compileShader(gl, fragmentShaderSource, gl.FRAGMENT_SHADER);
+        gl.attachShader(program, vShader);
+        gl.attachShader(program, fShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          console.error(gl.getProgramInfoLog(program));
+          return null;
+        }
+        return program;
+      }
+
+      // Vertex and fragment shaders
+      const vertexShaderSource = `attribute vec2 a_position;
+varying vec2 v_uv;
+
+void main() {
+    v_uv = a_position * 0.5 + 0.5; // Map [-1,1] to [0,1]
+    gl_Position = vec4(a_position, 0.0, 1.0);
+}
+`; // Use the vertex shader code here
+      const fragmentShaderSource = `precision highp float;
+
+varying vec2 v_uv;
+
+uniform vec2 resolution; // Canvas resolution
+uniform float schwarzschildRadius; // Schwarzschild radius
+uniform vec3 cameraPosition; // Camera coordinates
+uniform float time; // For animations
+
+void main() {
+    // Normalize pixel coordinates to [-1, 1]
+    vec2 uv = (v_uv * resolution - resolution * 0.5) / resolution.y;
+
+    // Ray origin and direction
+    vec3 rayOrigin = cameraPosition;
+    vec3 rayDirection = normalize(vec3(uv, -1.0)); // Forward direction
+
+    // Schwarzschild black hole effect
+    float r = length(rayOrigin.xy); // Distance to the black hole
+    float gravity = schwarzschildRadius / r; // Basic gravity approximation
+
+    // Distort based on gravity
+    vec2 distortedUV = uv * (1.0 - gravity);
+
+    // Set color (simulate gravitational redshift)
+    float intensity = 1.0 / (1.0 + gravity);
+    vec3 color = vec3(intensity, intensity * 0.8, intensity * 0.6);
+
+    gl_FragColor = vec4(color, 1.0);
+}
+`; // Use the fragment shader code here
+
+      const program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
+      gl.useProgram(program);
+
+      // Pass data to shaders
+      const positionBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+      // Set up attributes
+      const positionLocation = gl.getAttribLocation(program, "a_position");
+      gl.enableVertexAttribArray(positionLocation);
+      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+      // Set uniforms
+      const resolutionLocation = gl.getUniformLocation(program, "resolution");
+      const schwarzschildRadiusLocation = gl.getUniformLocation(program, "schwarzschildRadius");
+      const cameraPositionLocation = gl.getUniformLocation(program, "cameraPosition");
+      const timeLocation = gl.getUniformLocation(program, "time");
+
+      gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+      gl.uniform1f(schwarzschildRadiusLocation, 1.0); // Example radius
+      gl.uniform3f(cameraPositionLocation, 0.0, 0.0, 5.0);
+
+      // Animation loop
+      function render(time) {
+        gl.uniform1f(timeLocation, time * 0.001); // Pass time to shader
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+      }
+
+      render();
+    </script>
+  </body>
+</html>
