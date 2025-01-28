@@ -4,8 +4,8 @@ import fs from "fs";
 import { Vector3d } from "./vectors.js";
 
 // Set up canvas dimensions
-const canvasWidth = 1920;
-const canvasHeight = 1080;
+const canvasWidth = 1920 / 4;
+const canvasHeight = 1080 / 4;
 const canvas = createCanvas(canvasWidth, canvasHeight);
 const ctx = canvas.getContext("2d");
 
@@ -182,7 +182,7 @@ let bh = new BlackHole(new Vector3d(0, 0, 0), mass); // Changed from (0, -1000, 
 console.log(`The Schwarzschild radius is ${bh.rs} meters.`);
 
 // Camera setup
-let origin = new Vector3d(0, -100000, 2000);
+let origin = new Vector3d(0, -100000, 10000);
 let direction = new Vector3d(0, 0, 0); // Look towards the black hole
 
 const fov = 45;
@@ -217,9 +217,13 @@ let particles = [];
 for (let i = 0; i < 1000; i++) {
   let u = Math.random() * 100000 - 50000;
   let v = Math.random() * 100000 - 50000;
-  let w = Math.random() * 100000 - 50000;
+  let w = Math.random() * 2500 - 2500 / 2;
 
-  let vec = new Vector3d(u, v, 0);
+  let vec = new Vector3d(u, v, w);
+
+  if (Vector3d.distance(bh, vec) < 5000) {
+    continue;
+  }
 
   // console.log(vec);
 
@@ -307,7 +311,7 @@ for (let y = 0; y < canvasHeight; y++) {
         return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
       }
 
-      let scaledDistance = normalize(finDistance, 75000, 10000, 0, 255);
+      let scaledDistance = normalize(finDistance, 50000, 0, 0, 255);
       ctx.fillStyle = `rgb(${scaledDistance}, ${scaledDistance}, ${scaledDistance})`;
     } else if (crossedZero) {
       // ctx.fillStyle = "red"; // Red for rays crossing the up axis
@@ -316,7 +320,7 @@ for (let y = 0; y < canvasHeight; y++) {
         return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
       }
 
-      let scaledDistance = normalize(finDistance, 75000, 10000, 0, 255);
+      let scaledDistance = normalize(finDistance, 10000, 3000, 0, 255);
       ctx.fillStyle = `rgb(${scaledDistance}, 0, 0)`;
     } else {
       const color = background(ray);
