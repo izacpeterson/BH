@@ -82,6 +82,12 @@ class Camera {
   }
 }
 
+class Particle {
+  constructor(position) {
+    this.position = position;
+  }
+}
+
 function hash(x, y, z) {
   return Math.abs((Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453) % 1);
 }
@@ -207,6 +213,25 @@ let iterations = Math.ceil(cameraDistanceToBH / stepSize) * 2; // Ensure suffici
 // Ray tracing loop with dynamic step sizing and minimum step size
 const minStepSize = 1000; // Minimum step size in meters (adjust as needed)
 
+let particles = [];
+for (let i = 0; i < 1000; i++) {
+  let u = Math.random() * 100000 - 50000;
+  let v = Math.random() * 100000 - 50000;
+  let w = Math.random() * 100000 - 50000;
+
+  let vec = new Vector3d(u, v, 0);
+
+  // console.log(vec);
+
+  let part = new Particle(vec);
+
+  // console.log(part.position.w);
+
+  particles.push(new Particle(vec));
+}
+
+// console.log(particles);
+
 // Ray tracing loop with dynamic step sizing and 'red cross' rendering
 for (let y = 0; y < canvasHeight; y++) {
   for (let x = 0; x < canvasWidth; x++) {
@@ -217,6 +242,7 @@ for (let y = 0; y < canvasHeight; y++) {
     totalCount++;
     let isAbsorbed = false;
     let crossedZero = false;
+    let hitParticle = false;
 
     // Dynamically trace the ray
     let steps = 0; // Track steps to prevent infinite loops
@@ -229,11 +255,23 @@ for (let y = 0; y < canvasHeight; y++) {
       ray.step(stepSize); // Move the ray forward
       const currentW = ray.origin.w;
 
-      if (prevW * currentW < 0 && distance < 75000 && distance > 10000) {
-        // Detect crossing zero
-        crossedZero = true;
-        break;
-      }
+      particles.forEach((part) => {
+        // console.log(part);
+
+        let distance = Vector3d.distance(part.position, ray.origin);
+        // console.log(distance);
+
+        if (distance < 500) {
+          hitParticle = true;
+          return;
+        }
+      });
+
+      // if (prevW * currentW < 0 && distance < 75000 && distance > 10000) {
+      //   // Detect crossing zero
+      //   crossedZero = true;
+      //   break;
+      // }
 
       // Check for absorption
       if (distance < bh.rs) {
@@ -241,6 +279,8 @@ for (let y = 0; y < canvasHeight; y++) {
         absorbedCount++;
         break;
       }
+
+      if (hitParticle) break;
 
       // Check for escape condition
       const escapeDistance = bh.rs * 50; // Arbitrary escape threshold
@@ -262,6 +302,13 @@ for (let y = 0; y < canvasHeight; y++) {
     // Render the pixel
     if (isAbsorbed) {
       ctx.fillStyle = "black"; // Black for absorbed rays
+    } else if (hitParticle) {
+      function normalize(value, minInput, maxInput, minOutput, maxOutput) {
+        return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
+      }
+
+      let scaledDistance = normalize(finDistance, 75000, 10000, 0, 255);
+      ctx.fillStyle = `rgb(${scaledDistance}, ${scaledDistance}, ${scaledDistance})`;
     } else if (crossedZero) {
       // ctx.fillStyle = "red"; // Red for rays crossing the up axis
 
