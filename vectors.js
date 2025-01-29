@@ -72,6 +72,10 @@ export class Vector3d {
     return [this.u, this.v, this.w];
   }
 
+  static multiply(v, scalar) {
+    return new Vector3d(v.u * scalar, v.v * scalar, v.w * scalar);
+  }
+
   // Create a Vector3d object from an array [u, v, w]
   static fromArray(array) {
     if (array.length !== 3) {
@@ -105,6 +109,12 @@ export class Vector3d {
 
   static magnitude(vector) {
     return Math.sqrt(vector.u ** 2 + vector.v ** 2 + vector.w ** 2);
+  }
+
+  add(v) {
+    this.u += v.u;
+    this.v += v.v;
+    this.w += v.w;
   }
 
   static add(v1, v2) {
