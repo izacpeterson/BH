@@ -4,8 +4,8 @@ import fs from "fs";
 import { Vector3d } from "./vectors.js";
 
 // Set up canvas dimensions
-const canvasWidth = 1920 / 8;
-const canvasHeight = 1080 / 8;
+const canvasWidth = 1920 / 1;
+const canvasHeight = 1080 / 1;
 const canvas = createCanvas(canvasWidth, canvasHeight);
 const ctx = canvas.getContext("2d");
 
@@ -182,7 +182,7 @@ let bh = new BlackHole(new Vector3d(0, 0, 0), mass); // Changed from (0, -1000, 
 console.log(`The Schwarzschild radius is ${bh.rs} meters.`);
 
 // Camera setup
-let origin = new Vector3d(0, 100000, 1000);
+let origin = new Vector3d(0, 100000, 5000);
 let direction = new Vector3d(0, 0, 0); // Look towards the black hole
 
 const fov = 45;
@@ -213,15 +213,19 @@ let iterations = Math.ceil(cameraDistanceToBH / stepSize) * 2; // Ensure suffici
 // Ray tracing loop with dynamic step sizing and minimum step size
 const minStepSize = 1000; // Minimum step size in meters (adjust as needed)
 
+let diskHeight = 500;
+let diskOuterRadius = 50000;
+let diskInnerRadius = 5000;
+
 let particles = [];
-for (let i = 0; i < 5000; i++) {
+for (let i = 0; i < 50000; i++) {
   let u = Math.random() * 100000 - 50000;
   let v = Math.random() * 100000 - 50000;
-  let w = Math.random() * 2000 - 2000 / 2;
+  let w = Math.random() * diskHeight - diskHeight / 2;
 
   let vec = new Vector3d(u, v, w);
 
-  if (Vector3d.distance(bh, vec) < 5000 && Vector3d.distance(bh, vec) > 50000) {
+  if (Vector3d.distance(bh, vec) < diskOuterRadius && Vector3d.distance(bh, vec) > diskInnerRadius) {
     continue;
   }
 
@@ -242,7 +246,7 @@ let rayCount = 0;
 let skipped = 0;
 for (let y = 0; y < canvasHeight; y++) {
   for (let x = 0; x < canvasWidth; x++) {
-    stepSize = 10000;
+    stepSize = 1000;
     const ray = cam.generateRay(x, y, canvasWidth, canvasHeight);
 
     // const b = calculateImpactParameter(ray, bh);
@@ -269,7 +273,7 @@ for (let y = 0; y < canvasHeight; y++) {
       const distance = distanceToBlackHole(ray, bh);
       finDistance = distance;
 
-      if (x == 100 && y == 100) {
+      if (x == Math.round(canvasWidth / 2) && y == Math.round(canvasHeight / 2)) {
         console.log(distance);
       }
 
@@ -278,23 +282,25 @@ for (let y = 0; y < canvasHeight; y++) {
       ray.step(stepSize); // Move the ray forward
       const currentW = ray.origin.w;
 
-      particles.forEach((part) => {
-        // console.log(part);
+      if (currentW < 0 + diskHeight && currentW > 0 - diskHeight && distance < diskOuterRadius && distance > diskInnerRadius) {
+        particles.forEach((part) => {
+          // console.log(part);
 
-        let distance = Vector3d.distance(part.position, ray.origin);
-        // console.log(distance);
+          let distance = Vector3d.distance(part.position, ray.origin);
+          // console.log(distance);
 
-        if (distance < 500) {
-          hitParticle = true;
-          return;
-        }
-      });
-
+          if (distance < diskHeight / 2) {
+            hitParticle = true;
+            return;
+          }
+        });
+      }
       // if (prevW * currentW < 0 && distance < 75000 && distance > 10000) {
       //   // Detect crossing zero
       //   crossedZero = true;
       //   break;
       // }
+      if (hitParticle) break;
 
       // Check for absorption
       if (distance < bh.rs) {
@@ -303,13 +309,11 @@ for (let y = 0; y < canvasHeight; y++) {
         break;
       }
 
-      // if (distance > 10000) {
-      //   stepSize += 100;
-      // } else {
-      //   stepSize = 100;
-      // }
-
-      if (hitParticle) break;
+      if (distance > 10000) {
+        stepSize += 100;
+      } else {
+        stepSize = 1000;
+      }
 
       // Check for escape condition
       const escapeDistance = cameraDistanceToBH * 1.1; // Arbitrary escape threshold
@@ -330,9 +334,6 @@ for (let y = 0; y < canvasHeight; y++) {
     }
 
     // Render the pixel
-    let red = 0;
-    let green = 0;
-    let blue = 0;
 
     if (isAbsorbed) {
       ctx.fillStyle = "black"; // Black for absorbed rays
@@ -341,12 +342,9 @@ for (let y = 0; y < canvasHeight; y++) {
         return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
       }
 
-      let scaledDistance = normalize(finDistance, 50000, 0, 0, 255);
+      let scaledDistance = normalize(finDistance, diskOuterRadius, diskInnerRadius, 0, 255);
       ctx.fillStyle = `rgb(${scaledDistance}, ${scaledDistance}, ${scaledDistance})`;
-
-      red += scaledDistance;
-      green += scaledDistance;
-      blue += scaledDistance;
+      // ctx.fillStyle = "white";
     } else if (crossedZero) {
       ctx.fillStyle = "red"; // Red for rays crossing the up axis
 
@@ -366,12 +364,12 @@ for (let y = 0; y < canvasHeight; y++) {
 
       ctx.fillStyle = `rgba(${scaledDistance}, 0, 0, 1)`;
     } else {
-      const color = background(ray);
-      ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
+      // const color = background(ray);
+      // ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
       ctx.fillStyle = "black";
     }
 
-    ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+    // ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
     ctx.fillRect(x, y, 1, 1);
   }
 }
