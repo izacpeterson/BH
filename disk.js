@@ -18,6 +18,8 @@ export class Particle {
     this.position = position;
     this.distanceFromBH = Vector3d.distance(position, bh.position);
     this.velocityMagnitude = Math.sqrt((G * bh.mass) / this.distanceFromBH);
+    let variance = 10000000;
+    this.velocityMagnitude += Math.random() * variance - variance / 2;
 
     let radialDirection = Vector3d.normalize(Vector3d.subtract(this.position, this.bh.position));
     let arbitraryVector = new Vector3d(0, 0, 1);
@@ -43,14 +45,14 @@ export class Particle {
 
 // Create Particles
 let particles = [];
-for (let i = 0; i < 100000; i++) {
+for (let i = 0; i < 10000; i++) {
   let randomX = Math.random() * bh.rs * 10 - bh.rs * 5;
   let randomY = Math.random() * bh.rs * 10 - bh.rs * 5;
   let randomZ = 0;
 
   let part = new Particle(new Vector3d(randomX, randomY, randomZ), bh);
   let distanceFromBH = Vector3d.distance(bh.position, part.position);
-  if (distanceFromBH > bh.rs && distanceFromBH < bh.rs * 5) {
+  if (distanceFromBH > bh.rs * 1 && distanceFromBH < bh.rs * 5) {
     particles.push(part);
   }
 }
