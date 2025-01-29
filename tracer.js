@@ -4,8 +4,8 @@ import fs from "fs";
 import { Vector3d } from "./vectors.js";
 
 // Set up canvas dimensions
-const canvasWidth = 1920 * 2;
-const canvasHeight = 1080 * 2;
+const canvasWidth = 1920 * 1;
+const canvasHeight = 1080 * 1;
 const canvas = createCanvas(canvasWidth, canvasHeight);
 const ctx = canvas.getContext("2d");
 
@@ -173,6 +173,42 @@ function rungeKuttaDirectionUpdate(ray, blackHole, dt) {
   return Vector3d.normalize(newDirection);
 }
 
+function hsvToRgb(h, s, v) {
+  let r, g, b;
+  let i = Math.floor(h * 6);
+  let f = h * 6 - i;
+  let p = v * (1 - s);
+  let q = v * (1 - f * s);
+  let t = v * (1 - (1 - f) * s);
+
+  switch (i % 6) {
+    case 0:
+      (r = v), (g = t), (b = p);
+      break;
+    case 1:
+      (r = q), (g = v), (b = p);
+      break;
+    case 2:
+      (r = p), (g = v), (b = t);
+      break;
+    case 3:
+      (r = p), (g = q), (b = v);
+      break;
+    case 4:
+      (r = t), (g = p), (b = v);
+      break;
+    case 5:
+      (r = v), (g = p), (b = q);
+      break;
+  }
+
+  return {
+    r: Math.round(r * 255),
+    g: Math.round(g * 255),
+    b: Math.round(b * 255),
+  };
+}
+
 // Example usage
 const mass = 1.989e30; // Mass of the Sun in kilograms
 
@@ -213,9 +249,9 @@ let iterations = Math.ceil(cameraDistanceToBH / stepSize) * 2; // Ensure suffici
 // Ray tracing loop with dynamic step sizing and minimum step size
 const minStepSize = 1000; // Minimum step size in meters (adjust as needed)
 
-let diskHeight = 10;
+let diskHeight = 175;
 let diskOuterRadius = 50000;
-let diskInnerRadius = 5000;
+let diskInnerRadius = 10000;
 
 let particles = [];
 for (let i = 0; i < 50000; i++) {
@@ -289,7 +325,7 @@ for (let y = 0; y < canvasHeight; y++) {
           let distance = Vector3d.distance(part.position, ray.origin);
           // console.log(distance);
 
-          if (distance < 10) {
+          if (distance < 175) {
             hitParticle = true;
             return;
           }
@@ -300,7 +336,6 @@ for (let y = 0; y < canvasHeight; y++) {
       //   crossedZero = true;
       //   break;
       // }
-      if (hitParticle) break;
 
       // Check for absorption
       if (distance < bh.rs) {
@@ -314,6 +349,8 @@ for (let y = 0; y < canvasHeight; y++) {
       } else {
         stepSize = 1000;
       }
+
+      if (hitParticle) break;
 
       // Check for escape condition
       const escapeDistance = cameraDistanceToBH * 1.1; // Arbitrary escape threshold
@@ -342,8 +379,12 @@ for (let y = 0; y < canvasHeight; y++) {
         return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
       }
 
-      let scaledDistance = normalize(finDistance, diskOuterRadius, diskInnerRadius, 0, 255);
-      ctx.fillStyle = `rgb(${scaledDistance}, ${scaledDistance}, ${scaledDistance})`;
+      let scaledDistance = normalize(finDistance, diskOuterRadius, diskInnerRadius, 0, 1);
+      // ctx.fillStyle = `rgb(${scaledDistance}, ${scaledDistance}, ${scaledDistance})`;
+
+      let color = hsvToRgb(0.6, 1 - scaledDistance, scaledDistance);
+      ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+
       // ctx.fillStyle = "white";
     } else if (crossedZero) {
       ctx.fillStyle = "red"; // Red for rays crossing the up axis
