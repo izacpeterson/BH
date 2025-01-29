@@ -4,8 +4,8 @@ import fs from "fs";
 import { Vector3d } from "./vectors.js";
 
 // Set up canvas dimensions
-const canvasWidth = 1920 / 1;
-const canvasHeight = 1080 / 1;
+const canvasWidth = 1920 / 8;
+const canvasHeight = 1080 / 8;
 const canvas = createCanvas(canvasWidth, canvasHeight);
 const ctx = canvas.getContext("2d");
 
@@ -214,7 +214,7 @@ let iterations = Math.ceil(cameraDistanceToBH / stepSize) * 2; // Ensure suffici
 const minStepSize = 1000; // Minimum step size in meters (adjust as needed)
 
 let particles = [];
-for (let i = 0; i < 500; i++) {
+for (let i = 0; i < 5000; i++) {
   let u = Math.random() * 100000 - 50000;
   let v = Math.random() * 100000 - 50000;
   let w = Math.random() * 2000 - 2000 / 2;
@@ -237,11 +237,15 @@ for (let i = 0; i < 500; i++) {
 // console.log(particles);
 
 // Ray tracing loop with dynamic step sizing and 'red cross' rendering
+
+let rayCount = 0;
+let skipped = 0;
 for (let y = 0; y < canvasHeight; y++) {
   for (let x = 0; x < canvasWidth; x++) {
+    stepSize = 10000;
     const ray = cam.generateRay(x, y, canvasWidth, canvasHeight);
 
-    const b = calculateImpactParameter(ray, bh);
+    // const b = calculateImpactParameter(ray, bh);
 
     totalCount++;
     let isAbsorbed = false;
@@ -251,9 +255,24 @@ for (let y = 0; y < canvasHeight; y++) {
     // Dynamically trace the ray
     let steps = 0; // Track steps to prevent infinite loops
     let finDistance = 0;
+
+    // console.log(Vector3d.distance(ray.origin, bh.position), bh.rs * 2);
+
     while (true) {
+      // const isNearBH = Vector3d.distance(ray.origin, bh.position) < bh.rs * 50; // Expanding threshold
+      // if (!isNearBH) {
+      //   skipped++;
+      //   console.log(skipped, totalCount);
+      //   continue;
+      // }
+
       const distance = distanceToBlackHole(ray, bh);
       finDistance = distance;
+
+      if (x == 100 && y == 100) {
+        console.log(distance);
+      }
+
       // Check if the ray crosses the "up" axis (w component crosses 0)
       const prevW = ray.origin.w;
       ray.step(stepSize); // Move the ray forward
@@ -284,11 +303,18 @@ for (let y = 0; y < canvasHeight; y++) {
         break;
       }
 
+      // if (distance > 10000) {
+      //   stepSize += 100;
+      // } else {
+      //   stepSize = 100;
+      // }
+
       if (hitParticle) break;
 
       // Check for escape condition
-      const escapeDistance = bh.rs * 50; // Arbitrary escape threshold
+      const escapeDistance = cameraDistanceToBH * 1.1; // Arbitrary escape threshold
       if (distance > escapeDistance) {
+        // console.log("escape");
         break;
       }
 
