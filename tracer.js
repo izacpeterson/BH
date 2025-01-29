@@ -4,8 +4,8 @@ import fs from "fs";
 import { Vector3d } from "./vectors.js";
 
 // Set up canvas dimensions
-const canvasWidth = 1920 / 1;
-const canvasHeight = 1080 / 1;
+const canvasWidth = 1920 * 2;
+const canvasHeight = 1080 * 2;
 const canvas = createCanvas(canvasWidth, canvasHeight);
 const ctx = canvas.getContext("2d");
 
@@ -213,7 +213,7 @@ let iterations = Math.ceil(cameraDistanceToBH / stepSize) * 2; // Ensure suffici
 // Ray tracing loop with dynamic step sizing and minimum step size
 const minStepSize = 1000; // Minimum step size in meters (adjust as needed)
 
-let diskHeight = 500;
+let diskHeight = 10;
 let diskOuterRadius = 50000;
 let diskInnerRadius = 5000;
 
@@ -289,7 +289,7 @@ for (let y = 0; y < canvasHeight; y++) {
           let distance = Vector3d.distance(part.position, ray.origin);
           // console.log(distance);
 
-          if (distance < diskHeight / 2) {
+          if (distance < 10) {
             hitParticle = true;
             return;
           }
