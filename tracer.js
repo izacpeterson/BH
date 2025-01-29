@@ -249,12 +249,12 @@ let iterations = Math.ceil(cameraDistanceToBH / stepSize) * 2; // Ensure suffici
 // Ray tracing loop with dynamic step sizing and minimum step size
 const minStepSize = 1000; // Minimum step size in meters (adjust as needed)
 
-let diskHeight = 175;
-let diskOuterRadius = 50000;
-let diskInnerRadius = 10000;
+let diskHeight = 400;
+let diskOuterRadius = 60000;
+let diskInnerRadius = bh.rs * 2.6;
 
 let particles = [];
-for (let i = 0; i < 50000; i++) {
+for (let i = 0; i < 5000; i++) {
   let u = Math.random() * 100000 - 50000;
   let v = Math.random() * 100000 - 50000;
   let w = Math.random() * diskHeight - diskHeight / 2;
@@ -298,6 +298,10 @@ for (let y = 0; y < canvasHeight; y++) {
 
     // console.log(Vector3d.distance(ray.origin, bh.position), bh.rs * 2);
 
+    const photonSphereRadius = 1.5 * bh.rs;
+    let photonOrbitCount = 0; // Track how long a ray spends near the photon sphere
+    const photonOrbitThreshold = 10; // Define a threshold for a ray to be considered part of the photon ring
+
     while (true) {
       // const isNearBH = Vector3d.distance(ray.origin, bh.position) < bh.rs * 50; // Expanding threshold
       // if (!isNearBH) {
@@ -308,6 +312,20 @@ for (let y = 0; y < canvasHeight; y++) {
 
       const distance = distanceToBlackHole(ray, bh);
       finDistance = distance;
+
+      // If the ray enters the photon sphere, track how long it stays there
+      if (distance < photonSphereRadius * 1.1 && distance > photonSphereRadius * 0.9) {
+        // console.log("photon sphere");
+        stepSize = 100;
+        // console.log(photonOrbitCount);
+        photonOrbitCount++;
+      }
+
+      // If a ray spends a long time near the photon sphere before escaping, mark it as photon ring
+      if (photonOrbitCount > photonOrbitThreshold) {
+        // console.log("photon break");
+        break; // Exit the loop and color this ray in the photon ring color
+      }
 
       if (x == Math.round(canvasWidth / 2) && y == Math.round(canvasHeight / 2)) {
         console.log(distance);
@@ -325,7 +343,8 @@ for (let y = 0; y < canvasHeight; y++) {
           let distance = Vector3d.distance(part.position, ray.origin);
           // console.log(distance);
 
-          if (distance < 175) {
+          // let maxDis = Math.random() * 100 + 100;
+          if (distance < 400) {
             hitParticle = true;
             return;
           }
@@ -374,6 +393,8 @@ for (let y = 0; y < canvasHeight; y++) {
 
     if (isAbsorbed) {
       ctx.fillStyle = "black"; // Black for absorbed rays
+    } else if (photonOrbitCount > photonOrbitThreshold) {
+      ctx.fillStyle = "white"; // Photon ring glow
     } else if (hitParticle) {
       function normalize(value, minInput, maxInput, minOutput, maxOutput) {
         return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
@@ -382,7 +403,7 @@ for (let y = 0; y < canvasHeight; y++) {
       let scaledDistance = normalize(finDistance, diskOuterRadius, diskInnerRadius, 0, 1);
       // ctx.fillStyle = `rgb(${scaledDistance}, ${scaledDistance}, ${scaledDistance})`;
 
-      let color = hsvToRgb(0.6, 1 - scaledDistance, scaledDistance);
+      let color = hsvToRgb(0.6, 0.8 - scaledDistance, scaledDistance);
       ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
 
       // ctx.fillStyle = "white";
