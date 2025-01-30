@@ -18,8 +18,8 @@ export class Particle {
     this.position = position;
     this.distanceFromBH = Vector3d.distance(position, bh.position);
     this.velocityMagnitude = Math.sqrt((G * bh.mass) / this.distanceFromBH);
-    let variance = 10000000;
-    this.velocityMagnitude += Math.random() * variance - variance / 2;
+    // let variance = 10000000;
+    // this.velocityMagnitude += Math.random() * variance - variance / 2;
 
     let radialDirection = Vector3d.normalize(Vector3d.subtract(this.position, this.bh.position));
     let arbitraryVector = new Vector3d(0, 0, 1);
@@ -33,9 +33,11 @@ export class Particle {
   }
 
   update(deltaTime) {
+    this.position.w += Math.random() * 100 - 50;
     let direction = Vector3d.subtract(this.bh.position, this.position);
     let distance = Vector3d.distance(this.bh.position, this.position);
     let forceMagnitude = (G * this.bh.mass) / distance ** 2;
+
     let acceleration = Vector3d.multiply(Vector3d.normalize(direction), forceMagnitude);
 
     this.velocityVector.add(Vector3d.multiply(acceleration, deltaTime));
@@ -48,6 +50,7 @@ let particles = [];
 for (let i = 0; i < 10000; i++) {
   let randomX = Math.random() * bh.rs * 10 - bh.rs * 5;
   let randomY = Math.random() * bh.rs * 10 - bh.rs * 5;
+
   let randomZ = 0;
 
   let part = new Particle(new Vector3d(randomX, randomY, randomZ), bh);
@@ -71,6 +74,10 @@ function animate() {
   ctx.fillStyle = "white";
   particles.forEach((part) => {
     part.update(timeStep);
+    // console.log(part.velocityVector.magnitude());
+    let brightness = normalize(part.velocityVector.magnitude(), 90000000, 150000000, 50, 255);
+    // console.log(brightness);
+    ctx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
     let x = normalize(part.position.u, -bh.rs * 10, bh.rs * 10, 0, canvas.width);
     let y = normalize(part.position.v, -bh.rs * 10, bh.rs * 10, canvas.height, 0); // Flip Y
     ctx.fillRect(x, y, 2, 2);
