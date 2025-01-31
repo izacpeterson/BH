@@ -48,14 +48,14 @@ export class Particle {
 // Create Particles
 let particles = [];
 for (let i = 0; i < 10000; i++) {
-  let randomX = Math.random() * bh.rs * 10 - bh.rs * 5;
-  let randomY = Math.random() * bh.rs * 10 - bh.rs * 5;
+  let randomX = Math.random() * bh.rs * 20 - bh.rs * 10;
+  let randomY = Math.random() * bh.rs * 20 - bh.rs * 10;
 
   let randomZ = 0;
 
   let part = new Particle(new Vector3d(randomX, randomY, randomZ), bh);
   let distanceFromBH = Vector3d.distance(bh.position, part.position);
-  if (distanceFromBH > bh.rs * 1 && distanceFromBH < bh.rs * 5) {
+  if (distanceFromBH > bh.rs * 1 && distanceFromBH < bh.rs * 10) {
     particles.push(part);
   }
 }
@@ -72,15 +72,22 @@ function animate() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = "white";
-  particles.forEach((part) => {
+  particles.forEach((part, index) => {
     part.update(timeStep);
     // console.log(part.velocityVector.magnitude());
-    let brightness = normalize(part.velocityVector.magnitude(), 90000000, 150000000, 50, 255);
+    let brightness = normalize(part.velocityVector.magnitude(), 50000000, 150000000, 50, 255);
     // console.log(brightness);
     ctx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
+
     let x = normalize(part.position.u, -bh.rs * 10, bh.rs * 10, 0, canvas.width);
     let y = normalize(part.position.v, -bh.rs * 10, bh.rs * 10, canvas.height, 0); // Flip Y
+
+    if (index == 0) {
+      ctx.fillStyle = "red";
+      ctx.fillRect(x, y, 4, 4);
+    }
     ctx.fillRect(x, y, 2, 2);
+    // ctx.fillRect(-y, -x, 2, 2);
   });
 
   requestAnimationFrame(animate);
