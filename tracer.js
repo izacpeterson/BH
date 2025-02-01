@@ -4,8 +4,8 @@ import fs from "fs";
 import { Vector3d } from "./vectors.js";
 
 // Set up canvas dimensions
-const canvasWidth = 1920 * 2;
-const canvasHeight = 1080 * 2;
+const canvasWidth = 1920 / 3;
+const canvasHeight = 1080 / 3;
 const canvas = createCanvas(canvasWidth, canvasHeight);
 const ctx = canvas.getContext("2d");
 
@@ -86,6 +86,44 @@ class Particle {
   constructor(position) {
     this.position = position;
   }
+}
+
+function normalize(value, minInput, maxInput, minOutput, maxOutput) {
+  return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
+}
+
+const diskImagePath = "disk.png"; // Path to your image
+let diskCanvas, diskCtx;
+
+// Load the image ONCE and store pixel data
+function loadDiskImageSync(imagePath) {
+  return new Promise((resolve, reject) => {
+    loadImage(imagePath)
+      .then((image) => {
+        diskCanvas = createCanvas(image.width, image.height);
+        diskCtx = diskCanvas.getContext("2d");
+
+        diskCtx.drawImage(image, 0, 0);
+        console.log(`✅ Image loaded: ${imagePath}`);
+        resolve();
+      })
+      .catch((err) => reject(err));
+  });
+}
+
+await loadDiskImageSync(diskImagePath);
+
+// **Synchronous pixel sampling (after image is preloaded)**
+function getPixelColor(x, y) {
+  if (!diskCtx) {
+    console.error("❌ Image not loaded!");
+    return "rgba(0, 0, 0, 0)";
+  }
+
+  const imageData = diskCtx.getImageData(x, y, 1, 1).data;
+  const [r, g, b, a] = imageData;
+
+  return `rgba(${r}, ${g}, ${b}, 1)`;
 }
 
 function hash(x, y, z) {
@@ -221,7 +259,7 @@ console.log(`The Schwarzschild radius is ${bh.rs} meters.`);
 let origin = new Vector3d(0, 500000, 20000);
 let direction = new Vector3d(0, 0, 0); // Look towards the black hole
 
-const fov = 7;
+const fov = 15;
 const fovInRadians = (fov * Math.PI) / 180;
 
 // Adjusted camera 'up' vector for better visualization
@@ -295,6 +333,7 @@ for (let y = 0; y < canvasHeight; y++) {
     // Dynamically trace the ray
     let steps = 0; // Track steps to prevent infinite loops
     let finDistance = 0;
+    let finPos;
 
     // console.log(Vector3d.distance(ray.origin, bh.position), bh.rs * 2);
 
@@ -312,6 +351,7 @@ for (let y = 0; y < canvasHeight; y++) {
 
       const distance = distanceToBlackHole(ray, bh);
       finDistance = distance;
+      finPos = ray.origin;
 
       // If the ray enters the photon sphere, track how long it stays there
       if (distance < photonSphereRadius * 1.1 && distance > photonSphereRadius * 0.9) {
@@ -357,6 +397,12 @@ for (let y = 0; y < canvasHeight; y++) {
         break;
       }
 
+      // if (prevW * currentW < 0) {
+      //   // Detect crossing zero
+      //   crossedZero = true;
+      //   break;
+      // }
+
       // Check for absorption
       if (distance < bh.rs) {
         isAbsorbed = true;
@@ -385,7 +431,7 @@ for (let y = 0; y < canvasHeight; y++) {
       // Increment step counter and exit if too many steps
       steps++;
       if (steps > 10000) {
-        console.warn("Ray exceeded maximum step count, terminating.");
+        // console.warn("Ray exceeded maximum step count, terminating.");
         break;
       }
     }
@@ -415,11 +461,24 @@ for (let y = 0; y < canvasHeight; y++) {
         return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
       }
 
+      // console.log(finPos);
+
       let scaledDistance = normalize(finDistance, diskOuterRadius, diskInnerRadius, 0, 1);
       // ctx.fillStyle = `rgb(${scaledDistance}, ${scaledDistance}, ${scaledDistance})`;
 
-      let color = hsvToRgb(0.6, 0.8 - scaledDistance, scaledDistance);
-      ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+      // let color = hsvToRgb(0.6, 0.8 - scaledDistance, scaledDistance);
+      // ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+
+      let x = Math.floor(normalize(finPos.u, 0 - bh.rs * 40, bh.rs * 40, 0, 1000));
+      let y = Math.floor(normalize(finPos.v, 0 - bh.rs * 40, bh.rs * 40, 0, 1000));
+
+      let color = getPixelColor(x, y);
+      // console.log(color);
+      if (color !== "rgba(0, 0, 0, 0)") {
+        // console.log(color);
+      }
+
+      ctx.fillStyle = color;
     } else {
       // const color = background(ray);
       // ctx.fillStyle = `rgb(${Math.floor(color.r)}, ${Math.floor(color.g)}, ${Math.floor(color.b)})`;
