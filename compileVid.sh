@@ -1,0 +1,1 @@
+ffmpeg -framerate 30 -i output/%04d.png -c:v libx264 -pix_fmt yuv420p -crf 18 output.mp4

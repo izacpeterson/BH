@@ -65,7 +65,7 @@ export class Particle {
 
 // Create Particles
 const particles = [];
-const numParticles = 10000;
+const numParticles = 1000;
 
 for (let i = 0; i < numParticles; i++) {
   // Generate random coordinates around the black hole
@@ -89,7 +89,7 @@ const timeStep = 0.000001;
 // Animation loop with visual enhancements
 function animate() {
   // Draw a semi-transparent rectangle to create trailing effect
-  ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.01)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw black hole glow (centered)
@@ -122,7 +122,7 @@ function animate() {
 
     // Draw particle as a circle
     ctx.beginPath();
-    ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
     ctx.fill();
   });
 
