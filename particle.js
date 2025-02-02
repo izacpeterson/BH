@@ -10,6 +10,7 @@ export class Particle {
 
     // Calculate the velocity magnitude based on gravitational attraction
     this.velocityMagnitude = Math.sqrt((G * bh.mass) / this.distanceFromBH);
+    this.velocityMagnitude += Math.random() * 100000000;
 
     // Determine the tangential direction for orbit
     const radialDirection = Vector3d.normalize(Vector3d.subtract(this.position, this.bh.position));

@@ -23,7 +23,7 @@ const bh = new BlackHole(new Vector3d(0, 0, 0), SOLAR_MASS * 1);
 
 // Create Particles
 const particles = [];
-const numParticles = 2000;
+const numParticles = 10000;
 
 let diskInner = bh.rs * 1;
 let diskOuter = bh.rs * 10;
@@ -70,7 +70,11 @@ function frame() {
 
     let normalizedDistance = normalize(dist, diskOuter, diskInner, 0, 1);
 
-    let col = hsvToRgb(0.4, 1 - normalizedDistance, normalizedDistance);
+    let normalizedMagnitude = normalize(particle.velocityMagnitude, 50000000, 200000000, 0, 1);
+
+    let col = hsvToRgb(0.4, 1 - normalizedMagnitude, normalizedDistance);
+
+    // console.log(normalizedMagnitude);
 
     // console.log(col);
 
@@ -195,7 +199,7 @@ async function saveCanvas(canvas, filePath, frameIndex) {
 }
 
 async function runFrames() {
-  for (let i = 0; i < 30 * 60; i++) {
+  for (let i = 0; i < 1; i++) {
     // Adjust frame count as needed
     frame();
     await saveCanvas(diskCanvas, "./disk", i);
