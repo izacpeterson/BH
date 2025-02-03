@@ -9,8 +9,8 @@ import { BlackHole, Ray, Camera } from "./bh.js";
 
 import { normalize, eulerDirectionUpdate, hsvToRgb } from "./utils.js";
 
-const WIDTH = 1920 / 2;
-const HEIGHT = 1080 / 2;
+const WIDTH = 1920 / 6;
+const HEIGHT = 1080 / 6;
 const canvas = createCanvas(WIDTH, HEIGHT);
 const ctx = canvas.getContext("2d");
 
@@ -46,14 +46,14 @@ for (let i = 0; i < numParticles; i++) {
   }
 }
 
-const fov = 8;
+const fov = 7;
 const fovInRadians = (fov * Math.PI) / 180;
 
-const camera = new Camera(new Vector3d(0, 500000, 100000), new Vector3d(0, 0, 7000), new Vector3d(0, 0, 1), fovInRadians, WIDTH / HEIGHT);
+const camera = new Camera(new Vector3d(0, 500000, 100000), new Vector3d(0, 0, 5000), new Vector3d(0, 0, 1), fovInRadians, WIDTH / HEIGHT);
 
 const timeStep = 0.000001;
 
-const diskCanvas = createCanvas(1000, 1000);
+const diskCanvas = createCanvas(2000, 2000);
 const diskCtx = diskCanvas.getContext("2d");
 // Animation loop with visual enhancements\
 
@@ -91,7 +91,7 @@ function frame() {
 
     // Draw particle as a circle
     diskCtx.beginPath();
-    diskCtx.arc(x, y, 1, 0, Math.PI * 2);
+    diskCtx.arc(x, y, 5, 0, Math.PI * 2);
     diskCtx.fill();
   });
 
@@ -114,7 +114,10 @@ function frame() {
 
       while (true) {
         const distance = Vector3d.distance(ray.origin, bh.position);
-        ray.direction = eulerDirectionUpdate(ray, bh, stepSize);
+
+        if (distance < particleBounds) {
+          ray.direction = eulerDirectionUpdate(ray, bh, stepSize);
+        }
 
         if (distance < particleBounds * 2) {
           stepSize = 100;
@@ -139,7 +142,7 @@ function frame() {
         // }
 
         if (distance < bh.rs) {
-          color = { r: 0, g: 0, b: 0 };
+          //   color = { r: 0, g: 0, b: 0 };
           break;
         }
 
@@ -158,13 +161,17 @@ function frame() {
 
           const pixel = diskCtx.getImageData(diskX, diskY, 1, 1).data;
           // console.log(pixel);
-          color = { r: pixel[0], g: pixel[1], b: pixel[2] };
+          color.r += pixel[0];
+          color.g += pixel[1];
+          color.b += pixel[2];
+
+          //   color = { r: pixel[0], g: pixel[1], b: pixel[2] };
           break;
 
           if (color.r !== 0) {
             // let normalizedDistance = normalize(distance, particleBounds, diskInner, 0, 255);
             // color = { r: normalizedDistance, g: normalizedDistance, b: normalizedDistance };
-            break;
+            // break;
           } else {
             // break;
           }
@@ -199,7 +206,7 @@ async function saveCanvas(canvas, filePath, frameIndex) {
 }
 
 async function runFrames() {
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 30 * 30; i++) {
     // Adjust frame count as needed
     frame();
     await saveCanvas(diskCanvas, "./disk", i);
