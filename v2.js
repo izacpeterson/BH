@@ -9,8 +9,8 @@ import { BlackHole, Ray, Camera } from "./bh.js";
 
 import { normalize, eulerDirectionUpdate, hsvToRgb } from "./utils.js";
 
-const WIDTH = 1920 / 4;
-const HEIGHT = 1080 / 4;
+const WIDTH = 1920 / 2;
+const HEIGHT = 1080 / 2;
 const canvas = createCanvas(WIDTH, HEIGHT);
 const ctx = canvas.getContext("2d");
 
@@ -46,10 +46,10 @@ for (let i = 0; i < numParticles; i++) {
   }
 }
 
-const fov = 10;
+const fov = 8;
 const fovInRadians = (fov * Math.PI) / 180;
 
-const camera = new Camera(new Vector3d(0, 500000, 50000), bh.position, new Vector3d(0, 0, 1), fovInRadians, WIDTH / HEIGHT);
+const camera = new Camera(new Vector3d(0, 500000, 100000), new Vector3d(0, 0, 7000), new Vector3d(0, 0, 1), fovInRadians, WIDTH / HEIGHT);
 
 const timeStep = 0.000001;
 
@@ -59,7 +59,7 @@ const diskCtx = diskCanvas.getContext("2d");
 
 function frame() {
   // Draw a semi-transparent rectangle to create trailing effect
-  diskCtx.fillStyle = "rgba(0, 0, 0, 0.01)";
+  diskCtx.fillStyle = "rgba(0, 0, 0, 0.05)";
   diskCtx.fillRect(0, 0, diskCanvas.width, diskCanvas.height);
 
   // Update and render each particle
@@ -91,7 +91,7 @@ function frame() {
 
     // Draw particle as a circle
     diskCtx.beginPath();
-    diskCtx.arc(x, y, 5, 0, Math.PI * 2);
+    diskCtx.arc(x, y, 1, 0, Math.PI * 2);
     diskCtx.fill();
   });
 
@@ -117,7 +117,7 @@ function frame() {
         ray.direction = eulerDirectionUpdate(ray, bh, stepSize);
 
         if (distance < particleBounds * 2) {
-          stepSize = 1000;
+          stepSize = 100;
         } else if (distance < bh.rs * 2) {
           stepSize = 100;
         }
@@ -171,7 +171,7 @@ function frame() {
         }
 
         stepCount++;
-        if (stepCount > 1000) {
+        if (stepCount > 10000) {
           break;
         }
       }
@@ -199,7 +199,7 @@ async function saveCanvas(canvas, filePath, frameIndex) {
 }
 
 async function runFrames() {
-  for (let i = 0; i < 1; i++) {
+  for (let i = 0; i < 60; i++) {
     // Adjust frame count as needed
     frame();
     await saveCanvas(diskCanvas, "./disk", i);

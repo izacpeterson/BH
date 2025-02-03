@@ -1,6 +1,8 @@
 import { BlackHole } from "./bh.js";
 import { Vector3d } from "./vectors.js";
 
+import { Particle } from "./particle.js";
+
 // Constants
 const G = 6.6743e-11;
 const MASS_OF_SUN = 1.989e30; // Mass of the Sun in kilograms
@@ -21,51 +23,9 @@ function normalize(value, minInput, maxInput, minOutput, maxOutput) {
   return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
 }
 
-// Particle Class
-export class Particle {
-  constructor(position, bh) {
-    this.bh = bh;
-    this.position = position;
-    this.distanceFromBH = Vector3d.distance(position, bh.position);
-
-    // Calculate the velocity magnitude based on gravitational attraction
-    this.velocityMagnitude = Math.sqrt((G * bh.mass) / this.distanceFromBH);
-
-    // Determine the tangential direction for orbit
-    const radialDirection = Vector3d.normalize(Vector3d.subtract(this.position, this.bh.position));
-    const arbitraryVector = new Vector3d(0, 0, 1);
-    let velocityDirection = Vector3d.normalize(Vector3d.cross(radialDirection, arbitraryVector));
-
-    // Fallback direction if cross product is zero
-    if (velocityDirection.magnitude() === 0) {
-      velocityDirection = new Vector3d(1, 0, 0);
-    }
-
-    // Set the initial velocity vector
-    this.velocityVector = Vector3d.multiply(velocityDirection, this.velocityMagnitude);
-  }
-
-  update(deltaTime) {
-    // Add a small random wobble to the position (simulate perturbations)
-    this.position.w += Math.random() * 100 - 50;
-
-    // Calculate the gravitational force
-    const direction = Vector3d.subtract(this.bh.position, this.position);
-    const distance = Vector3d.distance(this.bh.position, this.position);
-    const forceMagnitude = (G * this.bh.mass) / distance ** 2;
-
-    // Compute the acceleration vector
-    const acceleration = Vector3d.multiply(Vector3d.normalize(direction), forceMagnitude);
-
-    // Update velocity and position based on the acceleration
-    this.velocityVector.add(Vector3d.multiply(acceleration, deltaTime));
-    this.position.add(Vector3d.multiply(this.velocityVector, deltaTime));
-  }
-}
-
 // Create Particles
 const particles = [];
-const numParticles = 1000;
+const numParticles = 10000;
 
 for (let i = 0; i < numParticles; i++) {
   // Generate random coordinates around the black hole
@@ -89,7 +49,7 @@ const timeStep = 0.000001;
 // Animation loop with visual enhancements
 function animate() {
   // Draw a semi-transparent rectangle to create trailing effect
-  ctx.fillStyle = "rgba(0, 0, 0, 0.01)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Draw black hole glow (centered)
@@ -122,7 +82,7 @@ function animate() {
 
     // Draw particle as a circle
     ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.arc(x, y, 1, 0, Math.PI * 2);
     ctx.fill();
   });
 
