@@ -1,10 +1,10 @@
 ffmpeg -framerate 30 -i output/%04d.png -c:v libx264 -pix_fmt yuv420p -crf 18 output.mp4
 
-ffmpeg -i blur.mp4 -vf "
+ffmpeg -i bloom.mp4 -vf "
     split=2[a][b]; 
-    [b]gblur=sigma=10, 
+    [b]gblur=sigma=50, 
        eq=brightness=0.05:contrast=1.2[glow]; 
-    [a][glow]blend=all_mode=lighten" bloom.mp4
+    [a][glow]blend=all_mode=lighten" bloom2.mp4
 
 ffmpeg -i output.mp4 -vf "minterpolate='mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1'" final.mp4
 
