@@ -9,8 +9,8 @@ import { BlackHole, Ray, Camera } from "./bh.js";
 
 import { normalize, eulerDirectionUpdate, hsvToRgb } from "./utils.js";
 
-const WIDTH = 1920 / 6;
-const HEIGHT = 1080 / 6;
+const WIDTH = 1920 / 1;
+const HEIGHT = 1080 / 1;
 const canvas = createCanvas(WIDTH, HEIGHT);
 const ctx = canvas.getContext("2d");
 
@@ -72,7 +72,7 @@ function frame() {
 
     let normalizedMagnitude = normalize(particle.velocityMagnitude, 50000000, 200000000, 0, 1);
 
-    let col = hsvToRgb(0.4, 1 - normalizedMagnitude, normalizedDistance);
+    let col = hsvToRgb(0.96, 1 - normalizedMagnitude, normalizedDistance);
 
     // console.log(normalizedMagnitude);
 
@@ -102,7 +102,7 @@ function frame() {
       let stepSize = 10000;
       const ray = camera.generateRay(x, y, WIDTH, HEIGHT);
 
-      ray.direction = eulerDirectionUpdate(ray, bh, stepSize);
+      // ray.direction = eulerDirectionUpdate(ray, bh, stepSize);
 
       let color = { r: 0, g: 0, b: 0 };
 
@@ -112,6 +112,8 @@ function frame() {
       let photonOrbitCount = 0; // Track how long a ray spends near the photon sphere
       const photonOrbitThreshold = 10; // Define a threshold for a ray to be considered part of the photon ring
 
+      let diskIntersects = 0;
+
       while (true) {
         const distance = Vector3d.distance(ray.origin, bh.position);
 
@@ -119,11 +121,19 @@ function frame() {
           ray.direction = eulerDirectionUpdate(ray, bh, stepSize);
         }
 
-        if (distance < particleBounds * 2) {
-          stepSize = 100;
-        } else if (distance < bh.rs * 2) {
-          stepSize = 100;
+        stepSize = Math.max(10, 10 * (distance / bh.rs) ** 2);
+        if (distance > 10 * bh.rs && stepSize > 1000000) break; // Escape condition
+
+        if (distance < 1.5 * bh.rs) {
+          stepSize *= 0.2; // Reduce step size drastically in photon sphere
         }
+        // if (distance < particleBounds * 2) {
+        //   stepSize = 1000;
+        // } else if (distance < bh.rs * 2) {
+        //   stepSize = 1000;
+        // } else {
+        //   stepSize = 10000;
+        // }
 
         // // If the ray enters the photon sphere, track how long it stays there
         // if (distance < photonSphereRadius * 1.1 && distance > photonSphereRadius * 0.9) {
@@ -157,21 +167,48 @@ function frame() {
           const diskX = Math.floor(normalize(ray.origin.u, 0 - particleBounds, particleBounds, 0, diskCanvas.width));
           const diskY = Math.floor(normalize(ray.origin.v, 0 - particleBounds, particleBounds, 0, diskCanvas.height));
 
-          // console.log(diskX, diskY);
-
           const pixel = diskCtx.getImageData(diskX, diskY, 1, 1).data;
-          // console.log(pixel);
           color.r += pixel[0];
           color.g += pixel[1];
           color.b += pixel[2];
 
+          // Compute the direction from particle to camera
+          let toCamera = Vector3d.subtract(camera.position, ray.origin);
+          toCamera.normalize();
+
+          // Get particle velocity at this position
+          let part = new Particle(ray.origin, bh);
+
+          // the 'bottom' half of the lense distortion was incorreclty mirrored
+          let radialVelocity;
+          if (diskIntersects == 0) {
+            radialVelocity = Vector3d.dot(part.velocityVector, toCamera) * -1;
+          } else {
+            radialVelocity = Vector3d.dot(part.velocityVector, toCamera);
+          }
+
+          // Compute relativistic Doppler factor
+          let scaleFactor = 5; // Adjust this to exaggerate the shift
+          let dopplerFactor = Math.pow(Math.sqrt((1 + radialVelocity / c) / (1 - radialVelocity / c)), scaleFactor);
+
+          // Apply Doppler shift to color
+          color.r = Math.min(255, color.r * dopplerFactor);
+          color.g = Math.min(255, color.g * dopplerFactor);
+          color.b = Math.min(255, color.b * dopplerFactor);
+
           //   color = { r: pixel[0], g: pixel[1], b: pixel[2] };
           break;
+
+          diskIntersects++;
+
+          if (diskIntersects == 2) {
+            break;
+          }
 
           if (color.r !== 0) {
             // let normalizedDistance = normalize(distance, particleBounds, diskInner, 0, 255);
             // color = { r: normalizedDistance, g: normalizedDistance, b: normalizedDistance };
-            // break;
+            break;
           } else {
             // break;
           }
@@ -206,7 +243,7 @@ async function saveCanvas(canvas, filePath, frameIndex) {
 }
 
 async function runFrames() {
-  for (let i = 0; i < 30 * 30; i++) {
+  for (let i = 0; i < 120; i++) {
     // Adjust frame count as needed
     frame();
     await saveCanvas(diskCanvas, "./disk", i);

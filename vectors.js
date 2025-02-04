@@ -134,6 +134,7 @@ export class Vector3d {
   }
 
   static dot(v1, v2) {
+    // console.log(v1, v2)
     let mult1 = v1.u * v2.u;
     let mult2 = v1.v * v2.v;
     let mult3 = v1.w * v2.w;

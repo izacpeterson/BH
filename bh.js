@@ -1,18 +1,21 @@
 import { Vector3d } from "./vectors.js";
 
 export class BlackHole {
-  constructor(position, mass) {
+  constructor(position, mass, spin = 0) {
     this.position = position; // Vector3d
     this.mass = mass;
+    this.spin = spin; // Dimensionless spin parameter (0 ≤ a ≤ 1)
 
     this.rs = this.schwarzschildRadius(mass);
-    // Removed scaleFactor
+    this.a = this.spin * this.rs; // Kerr spin parameter (a = J/Mc)
+
+    // Assume spin axis is along the z-axis (can be modified if needed)
+    this.spinAxis = new Vector3d(0, 0, 1);
   }
 
   schwarzschildRadius(mass) {
     const G = 6.6743e-11; // Gravitational constant m^3 kg^-1 s^-2
     const c = 299792458; // Speed of Light m/s
-
     return (2 * G * mass) / c ** 2;
   }
 }

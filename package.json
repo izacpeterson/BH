@@ -19,8 +19,6 @@
   "homepage": "https://github.com/izacpeterson/BH#readme",
   "description": "",
   "dependencies": {
-    "canvas": "^3.1.0",
-    "gpu.js": "^2.16.0",
-    "three": "^0.172.0"
-  }
+    "canvas": "^3.1.0"
+    }
 }
