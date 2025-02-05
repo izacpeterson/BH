@@ -10,13 +10,17 @@ export class Particle {
 
     // Calculate the velocity magnitude based on gravitational attraction
     this.velocityMagnitude = Math.sqrt((G * bh.mass) / this.distanceFromBH);
-    let variance = 20000000;
+    let variance = 60000000;
     this.velocityMagnitude += Math.random() * variance - variance / 2;
 
     // Determine the tangential direction for orbit
-    const radialDirection = Vector3d.normalize(Vector3d.subtract(this.position, this.bh.position));
+    const radialDirection = Vector3d.normalize(
+      Vector3d.subtract(this.position, this.bh.position)
+    );
     const arbitraryVector = new Vector3d(0, 0, 1);
-    let velocityDirection = Vector3d.normalize(Vector3d.cross(radialDirection, arbitraryVector));
+    let velocityDirection = Vector3d.normalize(
+      Vector3d.cross(radialDirection, arbitraryVector)
+    );
 
     // Fallback direction if cross product is zero
     if (velocityDirection.magnitude() === 0) {
@@ -24,7 +28,10 @@ export class Particle {
     }
 
     // Set the initial velocity vector
-    this.velocityVector = Vector3d.multiply(velocityDirection, this.velocityMagnitude);
+    this.velocityVector = Vector3d.multiply(
+      velocityDirection,
+      this.velocityMagnitude
+    );
   }
 
   update(deltaTime) {
@@ -37,7 +44,10 @@ export class Particle {
     const forceMagnitude = (G * this.bh.mass) / distance ** 2;
 
     // Compute the acceleration vector
-    const acceleration = Vector3d.multiply(Vector3d.normalize(direction), forceMagnitude);
+    const acceleration = Vector3d.multiply(
+      Vector3d.normalize(direction),
+      forceMagnitude
+    );
 
     // Update velocity and position based on the acceleration
     this.velocityVector.add(Vector3d.multiply(acceleration, deltaTime));

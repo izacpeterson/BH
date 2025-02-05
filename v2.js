@@ -9,8 +9,10 @@ import { BlackHole, Ray, Camera } from "./bh.js";
 
 import { normalize, eulerDirectionUpdate, hsvToRgb } from "./utils.js";
 
-const WIDTH = 1920 * 1;
-const HEIGHT = 1080 * 1;
+const WIDTH = 1920 * 2;
+const HEIGHT = 1080 * 2;
+const FRAME_COUNT = 60 * 60;
+
 const canvas = createCanvas(WIDTH, HEIGHT);
 const ctx = canvas.getContext("2d");
 
@@ -50,7 +52,7 @@ const fov = 15;
 const fovInRadians = (fov * Math.PI) / 180;
 
 const camera = new Camera(
-  new Vector3d(0, 500000, 30000),
+  new Vector3d(0, 500000, 70000),
   new Vector3d(0, 0, 0),
   new Vector3d(0.5, 0, 1),
   fovInRadians,
@@ -63,7 +65,25 @@ const diskCanvas = createCanvas(2000, 2000);
 const diskCtx = diskCanvas.getContext("2d");
 // Animation loop with visual enhancements\
 
+let camW = 20000;
+
+let camWEnd = camW * -1;
+
+let camTotal = camW - camWEnd;
+
+let camStep = camTotal / FRAME_COUNT;
+
 function frame() {
+  const camera = new Camera(
+    new Vector3d(0, 500000, camW),
+    new Vector3d(0, 0, 0),
+    new Vector3d(0.5, 0, 1),
+    fovInRadians,
+    WIDTH / HEIGHT
+  );
+
+  // camW -= camStep;
+
   // Draw a semi-transparent rectangle to create trailing effect
   diskCtx.fillStyle = "rgba(0, 0, 0, 0.05)";
   diskCtx.fillRect(0, 0, diskCanvas.width, diskCanvas.height);
@@ -74,7 +94,7 @@ function frame() {
 
     let dist = Vector3d.distance(bh.position, particle.position);
 
-    let normalizedDistance = normalize(dist, diskOuter, diskInner, 0.05, 0.4);
+    let normalizedDistance = normalize(dist, diskOuter, diskInner, 1, 0.9);
 
     let normalizedMagnitude = normalize(
       particle.velocityMagnitude,
@@ -212,26 +232,26 @@ function frame() {
             )
           );
 
-          if (diskIntersects !== 0) {
-            diskX = Math.floor(
-              normalize(
-                0 - ray.origin.u,
-                0 - particleBounds,
-                particleBounds,
-                0,
-                diskCanvas.width
-              )
-            );
-            diskY = Math.floor(
-              normalize(
-                ray.origin.v,
-                0 - particleBounds,
-                particleBounds,
-                0,
-                diskCanvas.height
-              )
-            );
-          }
+          // if (diskIntersects !== 0) {
+          //   diskX = Math.floor(
+          //     normalize(
+          //       0 - ray.origin.u,
+          //       0 - particleBounds,
+          //       particleBounds,
+          //       0,
+          //       diskCanvas.width
+          //     )
+          //   );
+          //   diskY = Math.floor(
+          //     normalize(
+          //       ray.origin.v,
+          //       0 - particleBounds,
+          //       particleBounds,
+          //       0,
+          //       diskCanvas.height
+          //     )
+          //   );
+          // }
 
           const pixel = diskCtx.getImageData(diskX, diskY, 1, 1).data;
           color.r += pixel[0];
@@ -248,25 +268,29 @@ function frame() {
           // the 'bottom' half of the lense distortion was incorreclty mirrored
           let radialVelocity;
 
-          radialVelocity = Vector3d.dot(part.velocityVector, toCamera);
+          radialVelocity = Vector3d.dot(part.velocityVector, ray.direction);
 
-          if (diskIntersects == 0) {
-            radialVelocity = Vector3d.dot(part.velocityVector, toCamera) * -1;
-          } else {
-            radialVelocity = Vector3d.dot(part.velocityVector, toCamera);
-          }
+          // if (diskIntersects == 0) {
+          //   radialVelocity = Vector3d.dot(part.velocityVector, toCamera) * -1;
+          // } else {
+          //   radialVelocity = Vector3d.dot(part.velocityVector, toCamera);
+          // }
 
           // Compute relativistic Doppler factor
-          let scaleFactor = 5; // Adjust this to exaggerate the shift
+          let scaleFactor = 7; // Adjust this to exaggerate the shift
           let dopplerFactor = Math.pow(
             Math.sqrt((1 + radialVelocity / c) / (1 - radialVelocity / c)),
             scaleFactor
           );
 
           // Apply Doppler shift to color
-          color.r = Math.min(255, color.r * dopplerFactor);
+          color.r = Math.min(255, color.r * dopplerFactor) * 1.5;
           color.g = Math.min(255, color.g * dopplerFactor);
           color.b = Math.min(255, color.b * dopplerFactor);
+
+          // color.r = color.r * dopplerFactor;
+          // color.g = color.g * dopplerFactor * 0.5;
+          // color.b = color.b * dopplerFactor * 0.5;
 
           //   color = { r: pixel[0], g: pixel[1], b: pixel[2] };
           // break;
@@ -315,7 +339,7 @@ async function saveCanvas(canvas, filePath, frameIndex) {
 }
 
 async function runFrames() {
-  for (let i = 0; i < 1200; i++) {
+  for (let i = 0; i < FRAME_COUNT; i++) {
     // Adjust frame count as needed
     frame();
     await saveCanvas(diskCanvas, "./disk", i);
