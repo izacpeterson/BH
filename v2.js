@@ -315,7 +315,7 @@ async function saveCanvas(canvas, filePath, frameIndex) {
 }
 
 async function runFrames() {
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 1200; i++) {
     // Adjust frame count as needed
     frame();
     await saveCanvas(diskCanvas, "./disk", i);

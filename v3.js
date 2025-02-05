@@ -9,8 +9,8 @@ import { BlackHole, Ray, Camera } from "./bh.js";
 
 import { normalize, eulerDirectionUpdate, hsvToRgb } from "./utils.js";
 
-const WIDTH = 1920 * 0.25;
-const HEIGHT = 1080 * 0.25;
+const WIDTH = 1920 * 0.5;
+const HEIGHT = 1080 * 0.5;
 const canvas = createCanvas(WIDTH, HEIGHT);
 const ctx = canvas.getContext("2d");
 
@@ -23,14 +23,14 @@ const bh = new BlackHole(new Vector3d(0, 0, 0), SOLAR_MASS * 1);
 
 // Create Particles
 const particles = [];
-const numParticles = 10000;
+const numParticles = 100000;
 
 let diskInner = bh.rs * 4;
 let diskOuter = bh.rs * 20;
 
 let particleBounds = diskOuter * 2;
 
-const gridResolution = 100; // Number of cubes along each axis
+const gridResolution = 150; // Number of cubes along each axis
 const gridSize = diskOuter * 2; // Size of the grid
 const voxelSize = gridSize / gridResolution; // Size of each voxel
 
@@ -70,12 +70,14 @@ particles.forEach((particle) => {
     particle.position.w
   );
   if (!voxelGrid[key]) {
-    voxelGrid[key] = 0;
+    voxelGrid[key] = { count: 0, velocity: new Vector3d(0, 0, 0) };
   }
-  voxelGrid[key]++;
+  voxelGrid[key].count++;
+  voxelGrid[key].velocity = Vector3d.add(
+    voxelGrid[key].velocity,
+    particle.velocityVector
+  );
 });
-
-console.log(voxelGrid);
 
 const fov = 10;
 const fovInRadians = (fov * Math.PI) / 180;
@@ -105,32 +107,30 @@ function frame() {
       particle.position.w
     );
     if (!voxelGrid[key]) {
-      voxelGrid[key] = 0;
+      voxelGrid[key] = { count: 0, velocity: new Vector3d(0, 0, 0) };
     }
-    voxelGrid[key]++;
+    voxelGrid[key].count++;
+    voxelGrid[key].velocity = Vector3d.add(
+      voxelGrid[key].velocity,
+      particle.velocityVector
+    );
 
     particle.update(timeStep);
   });
 
   console.log(bh.rs * 5);
+  let maxVoxelCount = 0;
 
   for (let x = 0; x < WIDTH; x++) {
     for (let y = 0; y < HEIGHT; y++) {
       let stepSize = 10000;
       const ray = camera.generateRay(x, y, WIDTH, HEIGHT);
 
-      // ray.direction = eulerDirectionUpdate(ray, bh, stepSize);
-
+      // Start with a black color.
       let color = { r: 0, g: 0, b: 0 };
-
       let stepCount = 0;
 
-      const photonSphereRadius = 1.5 * bh.rs;
-      let photonOrbitCount = 0; // Track how long a ray spends near the photon sphere
-      const photonOrbitThreshold = 10; // Define a threshold for a ray to be considered part of the photon ring
-
-      let diskIntersects = 0;
-
+      let voxelCount = 0;
       while (true) {
         const distance = Vector3d.distance(ray.origin, bh.position);
 
@@ -139,40 +139,62 @@ function frame() {
         }
 
         stepSize = Math.max(10, 1 * (distance / bh.rs) ** 2);
-        if (distance > 10 * bh.rs && stepSize > 1000000) break; // Escape condition
+        if (distance > 10 * bh.rs && stepSize > 1000000) break;
+        if (distance < bh.rs) break;
 
-        if (distance < bh.rs) {
-          // color = { r: 0, g: 0, b: 0 };
-          break;
-        }
-
-        const prevW = ray.origin.w;
         ray.step(stepSize);
-        const currentW = ray.origin.w;
 
+        // Get the voxel key for the ray's current position.
         let key = getVoxelKey(ray.origin.u, ray.origin.v, ray.origin.w);
-        // console.log(key);
-        let density = voxelGrid[key];
-        if (density) {
-          // console.log(density);
-          color.r++;
-          color.g++;
-          color.b++;
+        let voxel = voxelGrid[key];
 
-          if (color.r > 255) {
-            break;
+        // ... inside your voxel sampling code:
+        if (voxel && voxel.count) {
+          // Compute the average velocity for this voxel:
+          let avgVelocity = Vector3d.scale(voxel.velocity, 1 / voxel.count);
+          // Compute the line–of–sight velocity (project average velocity onto the ray direction)
+          let vLOS = Vector3d.dot(avgVelocity, ray.direction);
+
+          // Compute beta = vLOS / c
+          let beta = vLOS / c;
+          // Clamp beta to avoid issues when approaching the speed of light.
+          beta = Math.max(-0.99, Math.min(beta, 0.99));
+
+          // Compute the relativistic Doppler factor.
+
+          let dopplerFactor = Math.sqrt((1 + beta) / (1 - beta));
+          dopplerFactor = 0.7 + 0.3 * Math.pow((1 + beta) / (1 - beta), 0.5);
+          dopplerFactor = Math.max(0.7, Math.min(1, dopplerFactor));
+
+          voxelCount += voxel.count;
+
+          if (voxelCount > maxVoxelCount) {
+            maxVoxelCount = voxelCount;
           }
+          // console.log(maxVoxelCount);
+
+          let normaizedVoxelCount = normalize(voxel.count, 0, 5000, 0, 255);
+
+          color.r += normaizedVoxelCount;
+          color.g += normaizedVoxelCount + 0.05;
+          color.b += normaizedVoxelCount + 0.1;
+
+          color.r = Math.min(255, color.r * (0.8 + 0.2 * dopplerFactor));
+          color.g = Math.min(255, color.g * (0.8 + 0.2 * dopplerFactor));
+          color.b = Math.min(255, color.b * (0.8 + 0.2 * dopplerFactor));
         }
+
         stepCount++;
-        if (stepCount > 10000) {
-          break;
-        }
+        if (stepCount > 10000) break;
       }
 
-      ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+      ctx.fillStyle = `rgb(${Math.round(color.r)}, ${Math.round(
+        color.g
+      )}, ${Math.round(color.b)})`;
       ctx.fillRect(x, y, 1, 1);
     }
   }
+  console.log(maxVoxelCount);
 }
 
 async function saveCanvas(canvas, filePath, frameIndex) {
