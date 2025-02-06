@@ -1,4 +1,4 @@
-ffmpeg -framerate 30 -i output/%04d.png -c:v libx264 -pix_fmt yuv420p -crf 18 output.mp4
+ffmpeg -framerate 60 -i output/%04d.png -c:v libx264 -pix_fmt yuv420p -crf 18 output.mp4
 
 ffmpeg -i output.mp4 -vf "
     split=2[a][b]; 
@@ -22,3 +22,9 @@ ffmpeg -i output.mp4 -filter_complex "[0:v]split=3[v1][v2][v3];[v1]setpts=PTS-1/
 ffmpeg -framerate 30 -i output/%04d.png -vf "tblend=average, split[orig][blur];[blur]gblur=sigma=10[blurred];[orig][blurred]blend=screen" -c:v libx264 -pix_fmt yuv420p -crf 18 output_blur_bloom.mp4
 
 ffmpeg -framerate 30 -start_number 31 -i output/%04d.png -vf "tblend=average, split[orig][blur];[blur]gblur=sigma=10[blurred];[orig][blurred]blend=screen" -c:v libx264 -pix_fmt yuv420p -crf 18 output_blur_bloom.mp4
+
+ffmpeg -i bloom.mp4 -vf "scale=1920:1080" -c:v libx264 -crf 18 -preset slow -c:a copy scaled.mp4
+
+
+ffmpeg -i scaled.mp4 -vf "fps=15,scale=320:-1:flags=lanczos,palettegen" palette.png
+ffmpeg -i scaled.mp4 -i palette.png -filter_complex "fps=15,scale=320:-1:flags=lanczos [x]; [x][1:v] paletteuse" output.gif
