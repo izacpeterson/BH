@@ -30,7 +30,7 @@ let diskOuter = bh.rs * 20;
 
 let particleBounds = diskOuter * 2;
 
-const gridResolution = 150; // Number of cubes along each axis
+const gridResolution = 50; // Number of cubes along each axis
 const gridSize = diskOuter * 2; // Size of the grid
 const voxelSize = gridSize / gridResolution; // Size of each voxel
 

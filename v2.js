@@ -25,7 +25,7 @@ const bh = new BlackHole(new Vector3d(0, 0, 0), SOLAR_MASS * 1);
 
 // Create Particles
 const particles = [];
-const numParticles = 10000;
+const numParticles = 50000;
 
 let diskInner = bh.rs * 1;
 let diskOuter = bh.rs * 20;
@@ -48,7 +48,7 @@ for (let i = 0; i < numParticles; i++) {
   }
 }
 
-const fov = 15;
+const fov = 10;
 const fovInRadians = (fov * Math.PI) / 180;
 
 const camera = new Camera(
@@ -77,7 +77,7 @@ function frame() {
   const camera = new Camera(
     new Vector3d(0, 500000, camW),
     new Vector3d(0, 0, 0),
-    new Vector3d(0.5, 0, 1),
+    new Vector3d(-0.5, 0, 1),
     fovInRadians,
     WIDTH / HEIGHT
   );
@@ -103,6 +103,8 @@ function frame() {
       0,
       1
     );
+
+    normalizedMagnitude += particle.variance * 0.5;
 
     let col = hsvToRgb(0.4, 1 - normalizedMagnitude, 0 + normalizedMagnitude);
 
@@ -135,7 +137,7 @@ function frame() {
 
     // Draw particle as a circle
     diskCtx.beginPath();
-    diskCtx.arc(x, y, 5, 0, Math.PI * 2);
+    diskCtx.arc(x, y, 2, 0, Math.PI * 2);
     diskCtx.fill();
   });
 
@@ -284,7 +286,7 @@ function frame() {
           );
 
           // Apply Doppler shift to color
-          color.r = Math.min(255, color.r * dopplerFactor) * 1.5;
+          color.r = Math.min(255, color.r * dopplerFactor) * 1;
           color.g = Math.min(255, color.g * dopplerFactor);
           color.b = Math.min(255, color.b * dopplerFactor);
 
