@@ -54,6 +54,10 @@ export class Vector3d {
     return `${this.u}, ${this.v}, ${this.w}`;
   }
 
+  magnitudeSquared() {
+    return this.u ** 2 + this.v ** 2 + this.w ** 2;
+  }
+
   flatten() {
     return [this.u, this.v, this.w];
   }

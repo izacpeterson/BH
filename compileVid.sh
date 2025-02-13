@@ -1,4 +1,4 @@
-ffmpeg -framerate 60 -i output/%04d.png -c:v libx264 -pix_fmt yuv420p -crf 18 output.mp4
+ffmpeg -framerate 15 -i output/%04d.png -c:v libx264 -pix_fmt yuv420p -crf 18 output.mp4
 
 ffmpeg -i output.mp4 -vf "
     split=2[a][b]; 
@@ -28,3 +28,5 @@ ffmpeg -i bloom.mp4 -vf "scale=1920:1080" -c:v libx264 -crf 18 -preset slow -c:a
 
 ffmpeg -i scaled.mp4 -vf "fps=15,scale=320:-1:flags=lanczos,palettegen" palette.png
 ffmpeg -i scaled.mp4 -i palette.png -filter_complex "fps=15,scale=320:-1:flags=lanczos [x]; [x][1:v] paletteuse" output.gif
+
+ python3 -m http.server 8080

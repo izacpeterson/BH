@@ -19,6 +19,8 @@
   "homepage": "https://github.com/izacpeterson/BH#readme",
   "description": "",
   "dependencies": {
-    "canvas": "^3.1.0"
-    }
+    "canvas": "^3.1.0",
+    "express": "^4.21.2",
+    "perlin-noise": "^0.0.1"
+  }
 }

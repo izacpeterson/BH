@@ -3,10 +3,12 @@ import { Vector3d } from "./vectors.js";
 const G = 6.6743e-11; // Gravitational constant m^3 kg^-1 s^-2
 
 export class Particle {
-  constructor(position, bh) {
+  constructor(position, bh, temp) {
     this.bh = bh;
     this.position = position;
     this.distanceFromBH = Vector3d.distance(position, bh.position);
+
+    this.temp = temp;
 
     // Calculate the velocity magnitude based on gravitational attraction
     this.velocityMagnitude = Math.sqrt((G * bh.mass) / this.distanceFromBH);
