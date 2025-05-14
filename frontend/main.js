@@ -57,13 +57,13 @@ const camera = new Camera(
 const timeStep = 0.000001;
 
 const diskCanvas = document.getElementById("disk");
-diskCanvas.width = WIDTH * 2;
-diskCanvas.height = HEIGHT * 2;
+diskCanvas.width = 5000;
+diskCanvas.height = 5000;
 const diskCtx = diskCanvas.getContext("2d");
 
-for (let i = 0; i < 50; i++) {
+for (let i = 0; i < 150; i++) {
   // Draw a semi-transparent rectangle to create trailing effect
-  diskCtx.fillStyle = "rgba(0, 0, 0, 0.05)";
+  diskCtx.fillStyle = "rgba(0, 0, 0, 0.01)";
   diskCtx.fillRect(0, 0, diskCanvas.width, diskCanvas.height);
 
   // Update and render each particle
@@ -115,7 +115,7 @@ for (let i = 0; i < 50; i++) {
 
     // Draw particle as a circle
     diskCtx.beginPath();
-    diskCtx.arc(x, y, 1, 0, Math.PI * 2);
+    diskCtx.arc(x, y, 10, 0, Math.PI * 2);
     diskCtx.fill();
   });
 }
